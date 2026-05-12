@@ -387,7 +387,12 @@ export default function Home() {
         case 'name': aVal = a.name; bVal = b.name; break;
         case 'quantity': aVal = a.quantity; bVal = b.quantity; break;
         case 'avgPrice': aVal = a.avgPrice; bVal = b.avgPrice; break;
-        case 'currentPrice': aVal = a.currentPrice; bVal = b.currentPrice; break;
+        case 'currentPrice': 
+          // [수정] 현재가 헤더 클릭 시 실제 가격 대신 '변동률(changePercent)'을 기준으로 정렬합니다.
+          // 변동률 데이터가 없는 경우(예: 금현물) 0으로 처리합니다.
+          aVal = a.changePercent ?? 0; 
+          bVal = b.changePercent ?? 0; 
+          break;
         case 'investment': aVal = aInvest; bVal = bInvest; break;
         case 'current': aVal = aCurrent; bVal = bCurrent; break;
         case 'returnAmount': aVal = aCurrent - aInvest; bVal = bCurrent - bInvest; break;
