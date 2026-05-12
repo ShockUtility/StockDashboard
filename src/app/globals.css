@@ -134,17 +134,16 @@ h1, h2, h3 {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.02); /* 컨테이너 기본 배경색 통일 */
+  background: rgba(255, 255, 255, 0.05); /* 헤더/푸터 배경색과 일치시켜 빈틈 방지 */
 }
 
 .glass-table {
   width: 100%;
   min-width: 1200px;
-  display: table; /* 명시적 테이블 레이아웃 */
-  border-collapse: separate; /* border-spacing 활용을 위해 separate로 변경 */
-  border-spacing: 0;
+  border-collapse: collapse; /* 틈새 방지를 위해 다시 collapse로 복구 */
   text-align: left;
   font-size: 0.875rem;
+  table-layout: auto;
 }
 
 .glass-table th {
@@ -161,9 +160,14 @@ h1, h2, h3 {
 }
 
 /* 헤더와 푸터 배경색이 스크롤 시에도 유지되도록 보정 */
+.glass-table thead tr,
+.glass-table tfoot tr {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .glass-table thead th,
 .glass-table tfoot td {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: inherit; /* 부모 tr의 배경색 상속 */
 }
 
 .glass-table tr:hover {
