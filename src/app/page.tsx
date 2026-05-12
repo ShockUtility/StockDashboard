@@ -1,10 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, Area } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, Area, AreaChart, ReferenceLine } from 'recharts';
 
 // 파이 차트 색상 팔레트: 각 자산의 비중을 시각적으로 구분하기 위해 사용합니다.
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#6366f1', '#14b8a6', '#84cc16'];
+
+// 날짜 포맷터 함수 (예: 5월 13일 (수))
+const formatDateLabel = (dateStr: string) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})`;
+};
 
 // 주식 및 자산 아이템의 데이터 구조 정의
 interface StockItem {
@@ -59,6 +68,13 @@ interface AddStockModalProps {
   onSubmit: (e: React.FormEvent) => void;
 }
 
+interface StockDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  stock: StockItem | null;
+  formatMoney: (val: number, cur: string) => string;
+}
+
 export default function Home() {
   // --- 상태 관리 (State Management) ---
   const [isMounted, setIsMounted] = useState(false); // [신규] 클라이언트 사이드 마운트 확인용
@@ -91,6 +107,10 @@ export default function Home() {
   // 항목 추가 모달 상태
   const [showAddModal, setShowAddModal] = useState(false); // 추가 팝업 노출 여부
   const [addModalType, setAddModalType] = useState<'KR' | 'US'>('KR'); // 추가할 주식의 국가 유형
+  
+  // 개별 종목 상세 모달 상태
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
 
   // 주식 인라인 편집 상태 (표에서 직접 수정할 때 사용)
   const [editingStockId, setEditingStockId] = useState<string | null>(null);
@@ -290,6 +310,12 @@ export default function Home() {
     setEditingStockId(null);
   };
 
+  // 상세 모달 열기
+  const handleShowDetail = (item: StockItem) => {
+    setSelectedStock(item);
+    setShowDetailModal(true);
+  };
+
   // --- 자산 계산 로직 ---
   let totalStockInvestmentKRW = 0;
   let totalStockCurrentValueKRW = 0;
@@ -481,9 +507,9 @@ export default function Home() {
                           ) : (
                             <>
                               <strong 
-                                onClick={() => startEditStock(item)}
-                                style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', cursor: 'pointer' }} 
-                                title="클릭하여 이름 수정"
+                                onClick={() => handleShowDetail(item)}
+                                style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', cursor: 'pointer', color: 'var(--accent-blue)', textDecoration: 'underline', textUnderlineOffset: '4px' }} 
+                                title="클릭하여 상세 차트 보기"
                               >
                                 {item.name}
                               </strong>
@@ -775,6 +801,14 @@ export default function Home() {
         errorMsg={errorMsg}
         onSubmit={handleAddStock}
       />
+
+      {/* 개별 종목 상세 모달 */}
+      <StockDetailModal 
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        stock={selectedStock}
+        formatMoney={formatMoney}
+      />
     </main>
   );
 }
@@ -861,7 +895,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
         
         <div style={{ width: '100%', height: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <LineChart data={chartData}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -873,7 +907,11 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
                 axisLine={false} 
                 tickLine={false} 
                 tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} 
-                interval={4} 
+                tickFormatter={(value, index) => {
+                  const dateStr = value === '오늘' ? chartData[index]?.fullDate : value;
+                  return formatDateLabel(dateStr);
+                }}
+                interval={6} 
                 dy={10} 
               />
               <YAxis hide domain={[minRate, maxRate]} />
@@ -881,8 +919,8 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
                 labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
                 contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
                 labelFormatter={(label, payload) => {
-                  if (label === '오늘') return `오늘 (${payload[0]?.payload.fullDate})`;
-                  return label;
+                  const dateStr = label === '오늘' ? payload[0]?.payload.fullDate : label;
+                  return formatDateLabel(dateStr);
                 }}
                 formatter={(value: number, name: string) => {
                   if (name === '환율영역') return [null, null];
@@ -898,7 +936,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
                 dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#0f172a' }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
 
@@ -986,6 +1024,141 @@ const AddStockModal = ({ isOpen, onClose, type, code, setCode, avgPrice, setAvgP
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailModalProps) => {
+  const [history, setHistory] = useState<{date: string, price: number}[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen && stock) {
+      const fetchHistory = async () => {
+        setLoading(true);
+        setError('');
+        try {
+          const res = await fetch(`/api/stock-history?code=${encodeURIComponent(stock.code)}&country=${stock.currency === 'USD' ? 'US' : 'KR'}`);
+          const data = await res.json();
+          if (res.ok && data.history) {
+            setHistory(data.history);
+          } else {
+            setError(data.error || '데이터를 가져오지 못했습니다.');
+          }
+        } catch (err) {
+          setError('네트워크 오류가 발생했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchHistory();
+    }
+  }, [isOpen, stock]);
+
+  if (!isOpen || !stock) return null;
+
+  // 수익률 계산
+  const investment = stock.avgPrice * stock.quantity;
+  const current = stock.currentPrice * stock.quantity;
+  const returnAmount = current - investment;
+  const returnPercent = investment > 0 ? (returnAmount / investment) * 100 : 0;
+
+  // 차트 최소/최대값 계산 (여백 포함 + 매수단가 포함)
+  const prices = history.map(h => h.price);
+  const allValues = prices.length > 0 ? [...prices, stock.avgPrice] : [stock.avgPrice];
+  const minPrice = Math.min(...allValues) * 0.95;
+  const maxPrice = Math.max(...allValues) * 1.05;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95%', maxWidth: '800px', padding: '32px' }}>
+        <button className="modal-close" onClick={onClose}>×</button>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '1.5rem' }}>{stock.currency === 'KRW' ? '🇰🇷' : stock.currency === 'USD' ? '🇺🇸' : '🏅'}</span>
+              <h3 style={{ margin: 0, fontSize: '1.8rem' }}>{stock.name}</h3>
+            </div>
+            <p className="text-secondary" style={{ margin: 0 }}>{stock.code} • {stock.currency}</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{formatMoney(stock.currentPrice, stock.currency)}</div>
+            <div className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '1rem', fontWeight: 600 }}>
+              {stock.changePercent !== undefined ? `${stock.changePercent >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%` : '-'}
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px', minHeight: 'auto' }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>보유 수량</div>
+            <div style={{ fontWeight: 600 }}>{stock.quantity.toLocaleString()}</div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>평균 단가</div>
+            <div style={{ fontWeight: 600 }}>{formatMoney(stock.avgPrice, stock.currency)}</div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>현재 수익</div>
+            <div className={returnAmount >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: 700 }}>
+              {returnAmount >= 0 ? '+' : ''}{formatMoney(returnAmount, stock.currency)} ({returnPercent.toFixed(2)}%)
+            </div>
+          </div>
+        </div>
+
+        <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', position: 'relative' }}>
+          {loading ? (
+            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <div className="text-secondary">차트 데이터를 불러오는 중...</div>
+            </div>
+          ) : error ? (
+            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <div className="text-danger">{error}</div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={history}>
+                <defs>
+                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="date" 
+                  hide={true}
+                />
+                <YAxis 
+                  domain={[minPrice, maxPrice]} 
+                  hide={true}
+                />
+                <Tooltip 
+                  contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                  labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
+                  labelFormatter={formatDateLabel}
+                  formatter={(value: number) => [formatMoney(value, stock.currency), '종가']}
+                />
+                <ReferenceLine 
+                  y={stock.avgPrice} 
+                  stroke="#f59e0b" 
+                  strokeDasharray="5 5" 
+                  label={{ value: formatMoney(stock.avgPrice, stock.currency), position: 'insideTopRight', fill: '#f59e0b', fontSize: 12, fontWeight: 600, dy: -10 }} 
+                />
+                <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+          <div style={{ position: 'absolute', bottom: '12px', right: '24px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            최근 약 30거래일 추이
+          </div>
+        </div>
+
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+          <button className="glass-button" style={{ width: 'auto', padding: '12px 40px' }} onClick={onClose}>닫기</button>
+        </div>
       </div>
     </div>
   );

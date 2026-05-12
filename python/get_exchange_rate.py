@@ -46,7 +46,7 @@ def get_exchange_rate():
         for index, row in df.iterrows():
             dt = index.to_pydatetime()
             history.append({
-                "date": dt.strftime("%-m월 %-d일"), 
+                "date": dt.strftime("%Y-%m-%d"), 
                 "rate": round(float(row[close_col]), 2)
             })
         
