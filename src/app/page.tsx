@@ -532,7 +532,7 @@ export default function Home() {
                       </tr>
                     );
                   })}
-                  <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                  <tr>
                     <td><strong>💵 예수금 (현금)</strong><div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CASH</div></td>
                     <td>-</td>
                     <td>-</td>

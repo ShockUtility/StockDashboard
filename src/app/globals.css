@@ -170,8 +170,13 @@ h1, h2, h3 {
   background: inherit; /* 부모 tr의 배경색 상속 */
 }
 
+/* 홀수/짝수 줄 배경색 구분 */
+.glass-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .glass-table tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 /* Bar Chart Gauge */
