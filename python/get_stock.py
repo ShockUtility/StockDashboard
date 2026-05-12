@@ -1,26 +1,25 @@
 import sys
 import json
 import FinanceDataReader as fdr
-import yfinance as yf
-
-def get_korean_stock_name(code):
+def get_stock_name(code, country="KR"):
     try:
-        # 먼저 KOSPI로 시도
-        info = yf.Ticker(f"{code}.KS").info
-        if 'shortName' in info and info['shortName']:
-            return info['shortName']
+        if country == "KR":
+            # KRX 상장 종목 전체 리스트 가져오기 (KOSPI, KOSDAQ, KONEX 포함)
+            df_krx = fdr.StockListing('KRX')
+            stock = df_krx[df_krx['Code'] == code]
+            if not stock.empty:
+                return stock.iloc[0]['Name']
+        else:
+            # 미국 주식 종목명 가져오기 (NASDAQ, NYSE, AMEX 통합 리스트 활용 가능)
+            # 미국 주식은 워낙 방대하므로 우선 S&P500이나 주요 거래소 리스트에서 찾기를 시도합니다.
+            for market in ['NASDAQ', 'NYSE']:
+                df_us = fdr.StockListing(market)
+                stock = df_us[df_us['Symbol'] == code]
+                if not stock.empty:
+                    return stock.iloc[0]['Name']
     except:
         pass
-    
-    try:
-        # KOSDAQ으로 시도
-        info = yf.Ticker(f"{code}.KQ").info
-        if 'shortName' in info and info['shortName']:
-            return info['shortName']
-    except:
-        pass
-    
-    return ""
+    return code
 
 def main():
     if len(sys.argv) < 2:
@@ -47,20 +46,12 @@ def main():
                 change_percent = (current_price / prev_price - 1.0) * 100.0
         
         # 종목명 가져오기
-        name = code
-        is_korean = (country == "KR") or (country == "AUTO" and code.isdigit())
-        
-        if is_korean:
-            fetched_name = get_korean_stock_name(code)
-            name = fetched_name if fetched_name else code
+        # 종목명 및 통화 설정
+        if country == "KR" or (country == "AUTO" and code.isdigit()):
+            name = get_stock_name(code, "KR")
             currency = "KRW"
         else:
-            # 미국 주식 등으로 간주
-            try:
-                info = yf.Ticker(code).info
-                name = info.get('shortName', code)
-            except:
-                name = code
+            name = get_stock_name(code, "US")
             currency = "USD"
             
         result = {

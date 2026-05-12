@@ -1,30 +1,53 @@
-import yfinance as yf
+import FinanceDataReader as fdr
 import json
 import sys
-from datetime import datetime
+import pandas as pd
+from datetime import datetime, timedelta
 
 def get_exchange_rate():
     try:
-        # 야후 파이낸스에서 원/달러 환율 티커 조회 (USDKRW=X)
-        ticker = yf.Ticker("USDKRW=X")
+        # 최근 50일간의 데이터를 조회하여 영업일 및 최신성 확보
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=50)
         
-        # 최근 1개월치 데이터 가져오기 (차트 구성을 위해)
-        df = ticker.history(period="1mo")
+        # FinanceDataReader를 사용하여 조회 (USDKRW=X 티커가 실시간성이 높음)
+        df = fdr.DataReader('USDKRW=X', start_date.strftime('%Y-%m-%d'))
         
         if df.empty:
-            raise ValueError("환율 데이터를 찾을 수 없습니다 (USDKRW=X)")
+            # USDKRW=X 실패 시 기본 USD/KRW 재시도
+            df = fdr.DataReader('USD/KRW', start_date.strftime('%Y-%m-%d'))
             
-        # 최신 종가(Close)를 현재 환율로 사용
-        current_rate = float(df.iloc[-1]['Close'])
+        if df.empty:
+            raise ValueError("환율 데이터를 수집할 수 없습니다.")
+
+        # 데이터프레임의 모든 열 이름을 대문자로 통일하여 처리 (소스별 차이 방지)
+        df.columns = [c.upper() for c in df.columns]
+        
+        # 종가 데이터 열 찾기 (CLOSE 또는 ADJ CLOSE)
+        close_col = 'CLOSE'
+        if 'ADJ CLOSE' in df.columns:
+            # ADJ CLOSE가 있고 CLOSE가 없거나 NaN이면 ADJ CLOSE 사용
+            if 'CLOSE' not in df.columns:
+                close_col = 'ADJ CLOSE'
+            else:
+                df['CLOSE'] = df['CLOSE'].fillna(df['ADJ CLOSE'])
+        
+        # 종가 데이터가 없는 행 제거
+        df = df.dropna(subset=[close_col])
+        
+        # 가장 최신 데이터 30개 추출
+        df = df.tail(30)
+        
+        # 현재 환율 (마지막 행)
+        current_rate = float(df.iloc[-1][close_col])
         
         # 과거 기록 리스트 생성
         history = []
         for index, row in df.iterrows():
-            # index는 Timestamp 객체이므로 문자열로 변환
             dt = index.to_pydatetime()
             history.append({
-                "date": dt.strftime("%-m월 %-d일"), # "5월 12일" 형식
-                "rate": round(float(row['Close']), 2)
+                "date": dt.strftime("%-m월 %-d일"), 
+                "rate": round(float(row[close_col]), 2)
             })
         
         result = {
