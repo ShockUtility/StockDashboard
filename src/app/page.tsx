@@ -535,7 +535,7 @@ export default function Home() {
                     <td>-</td>
                     <td>-</td>
                     <td>-</td>
-                    <td>{formatMoney(cash, currency)}</td>
+                    <td>-</td>
                     <td>{isEditing ? <input type="number" className="glass-input" style={{ padding: '6px 10px', width: '130px', background: 'rgba(0,0,0,0.5)', textAlign: 'right' }} value={cash === 0 ? '' : cash} onChange={(e) => setCash(parseFloat(e.target.value) || 0)} onBlur={() => setIsEditing(false)} onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)} autoFocus placeholder="0" /> : <span onClick={() => setIsEditing(true)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>{formatMoney(cash, currency)}</span>}</td>
                     <td>-</td>
                     <td>{sectionTotalValue > 0 ? ((cash / sectionTotalValue) * 100).toFixed(1) : '0.0'}%</td>
@@ -545,12 +545,12 @@ export default function Home() {
                 <tfoot style={{ fontWeight: 'bold' }}>
                   <tr>
                     <td colSpan={4} style={{ textAlign: 'right' }}>총 합계</td>
-                    <td>{formatMoney(sectionStockInvestment + cash, currency)}</td>
+                    <td>{formatMoney(sectionStockInvestment, currency)}</td>
                     <td>{formatMoney(sectionTotalValue, currency)}</td>
                     <td className={sectionStockValue - sectionStockInvestment >= 0 ? 'text-success' : 'text-danger'}>
                       <div style={{ fontWeight: 'bold' }}>{sectionStockValue - sectionStockInvestment >= 0 ? '+' : ''}{formatMoney(sectionStockValue - sectionStockInvestment, currency)}</div>
                       <div style={{ fontSize: '0.85rem', marginTop: '2px', opacity: 0.9 }}>
-                        {(sectionStockInvestment + cash) > 0 ? (sectionStockValue - sectionStockInvestment >= 0 ? '+' : '') + ((sectionStockValue - sectionStockInvestment) / (sectionStockInvestment + cash) * 100).toFixed(2) + '%' : '0.00%'}
+                        {sectionStockInvestment > 0 ? (sectionStockValue - sectionStockInvestment >= 0 ? '+' : '') + ((sectionStockValue - sectionStockInvestment) / sectionStockInvestment * 100).toFixed(2) + '%' : '0.00%'}
                       </div>
                     </td>
                     <td>100.0%</td><td></td>
