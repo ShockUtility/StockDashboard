@@ -390,16 +390,16 @@ export default function Home() {
 
     return (
       <section className="glass-panel" style={{ marginTop: '32px' }}>
-        <div className="flex-between" style={{ marginBottom: isCollapsed ? '0' : '24px' }}>
+        <div className="flex-between portfolio-header" style={{ marginBottom: isCollapsed ? '0' : '24px' }}>
           <div 
             onClick={() => toggleSection(currency === 'KRW' ? 'KRW' : currency === 'USD' ? 'USD' : 'GOLD')}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', maxWidth: '100%' }}
           >
-            <span style={{ fontSize: '1.2rem', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>▼</span>
+            <span style={{ fontSize: '1.2rem', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', flexShrink: 0 }}>▼</span>
             <h2 style={{ margin: 0 }}>{title}</h2>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(0,0,0,0.3)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+          <div className="header-stats" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(0,0,0,0.3)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
               <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500 }}>평가 총액:</span>
               <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>{formatMoney(sectionTotalValue, currency)}</strong>
             </div>
@@ -534,7 +534,7 @@ export default function Home() {
                     <td><strong>💵 예수금 (현금)</strong><div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CASH</div></td><td>-</td><td>-</td><td>-</td><td>{formatMoney(cash, currency)}</td><td>{isEditing ? <input type="number" className="glass-input" style={{ padding: '6px 10px', width: '130px', background: 'rgba(0,0,0,0.5)', textAlign: 'right' }} value={cash === 0 ? '' : cash} onChange={(e) => setCash(parseFloat(e.target.value) || 0)} onBlur={() => setIsEditing(false)} onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)} autoFocus placeholder="0" /> : <span onClick={() => setIsEditing(true)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>{formatMoney(cash, currency)}</span>}</td><td>-</td><td>-</td><td>{sectionTotalValue > 0 ? ((cash / sectionTotalValue) * 100).toFixed(1) : '0.0'}%</td><td></td>
                   </tr>
                 </tbody>
-                <tfoot style={{ background: 'rgba(255,255,255,0.05)', fontWeight: 'bold' }}>
+                <tfoot style={{ fontWeight: 'bold' }}>
                   <tr>
                     <td colSpan={4} style={{ textAlign: 'right' }}>총 합계</td>
                     <td>{formatMoney(sectionStockInvestment + cash, currency)}</td>
@@ -684,7 +684,7 @@ export default function Home() {
           <div className="pie-chart-container" style={{ width: '100%', height: '320px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={80} outerRadius={135} paddingAngle={5} dataKey="value" stroke="none">
+                <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={70} outerRadius={115} paddingAngle={5} dataKey="value" stroke="none">
                   {totalPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatMoney(value, 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }} />

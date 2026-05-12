@@ -134,12 +134,15 @@ h1, h2, h3 {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.02); /* 컨테이너 기본 배경색 통일 */
 }
 
 .glass-table {
   width: 100%;
-  border-collapse: collapse;
+  min-width: 1200px;
+  display: table; /* 명시적 테이블 레이아웃 */
+  border-collapse: separate; /* border-spacing 활용을 위해 separate로 변경 */
+  border-spacing: 0;
   text-align: left;
   font-size: 0.875rem;
 }
@@ -155,6 +158,12 @@ h1, h2, h3 {
 .glass-table td {
   padding: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+/* 헤더와 푸터 배경색이 스크롤 시에도 유지되도록 보정 */
+.glass-table thead th,
+.glass-table tfoot td {
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .glass-table tr:hover {
@@ -280,6 +289,32 @@ h1, h2, h3 {
   .cash-total-card {
     margin-left: 0 !important;
     text-align: left !important;
+  }
+
+  /* 포트폴리오 섹션 헤더 모바일 최적화 */
+  .portfolio-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .portfolio-header h2 {
+    font-size: 1.1rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .portfolio-header .header-stats {
+    width: 100%;
+    justify-content: space-between !important;
+  }
+  
+  .portfolio-header .stat-badge {
+    padding: 8px 16px !important;
+    flex: 1;
+    justify-content: center;
   }
 
   /* 테이블 폰트 축소 */
