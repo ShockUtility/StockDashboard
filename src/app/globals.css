@@ -232,6 +232,71 @@ h1, h2, h3 {
   color: var(--danger-red);
 }
 
+/* Responsive Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 450px;
+  gap: 24px;
+  margin-bottom: 32px;
+  align-items: stretch;
+}
+
+/* Tablet & Mobile Optimization */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  main {
+    padding: 20px 12px !important;
+  }
+  
+  .glass-panel {
+    padding: 20px !important;
+  }
+  
+  h1 {
+    font-size: 1.8rem !important;
+  }
+  
+  /* 요약 카드 그리드 조정 */
+  .summary-cards {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  /* 하단 현금 현황 조정 */
+  .cash-details {
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+  
+  .cash-details > div {
+    width: 100%;
+  }
+
+  .cash-total-card {
+    margin-left: 0 !important;
+    text-align: left !important;
+  }
+}
+
+/* Table Scroll Hint */
+.glass-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.glass-table-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.glass-table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @keyframes fadeIn {
   to { opacity: 1; }
 }

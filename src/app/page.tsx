@@ -27,6 +27,38 @@ interface SortConfig {
   direction: SortDirection;
 }
 
+// --- 모달 컴포넌트용 Props 인터페이스 정의 ---
+interface PieModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currency: 'KRW' | 'USD' | 'GOLD';
+  cash: number;
+  portfolio: StockItem[];
+  formatMoney: (val: number, cur: string) => string;
+}
+
+interface ExchangeRateModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  exchangeHistory: {date: string, rate: number}[];
+  exchangeRate: number;
+}
+
+interface AddStockModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: 'KR' | 'US';
+  code: string;
+  setCode: (val: string) => void;
+  avgPrice: string;
+  setAvgPrice: (val: string) => void;
+  quantity: string;
+  setQuantity: (val: string) => void;
+  loading: boolean;
+  errorMsg: string;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
 export default function Home() {
   // --- 상태 관리 (State Management) ---
   const [portfolio, setPortfolio] = useState<StockItem[]>([]); // 내 전체 포트폴리오 리스트
@@ -293,220 +325,8 @@ export default function Home() {
     }).format(amount);
   };
 
-  // --- 컴포넌트: 비중 파이 차트 모달 (개별 섹션용) ---
-  const PieModal = ({ isOpen, onClose, currency, cash }: { isOpen: boolean, onClose: () => void, currency: 'KRW' | 'USD' | 'GOLD', cash: number }) => {
-    if (!isOpen) return null;
-    const data = portfolio
-      .filter(item => item.currency === currency)
-      .map(item => ({ name: item.name, value: item.currentPrice * item.quantity }));
-    if (cash > 0) data.push({ name: '💵 예수금 (현금)', value: cash });
-    data.sort((a, b) => b.value - a.value);
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
 
-    return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px', height: '650px', display: 'flex', flexDirection: 'column' }}>
-          <button className="modal-close" onClick={onClose}>×</button>
-          <h3 style={{ marginBottom: '16px', textAlign: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
-            {currency === 'KRW' ? '🇰🇷 한국 주식 비중' : currency === 'USD' ? '🇺🇸 미국 주식 비중' : '🏅 금현물 비중'}
-          </h3>
-          <div style={{ width: '100%', height: '300px', flexShrink: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={data} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
-                  {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value: number) => formatMoney(value, currency)} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', marginTop: '16px', paddingRight: '8px' }}>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {data.map((entry, index) => {
-                const percent = total > 0 ? (entry.value / total) * 100 : 0;
-                return (
-                  <li key={`item-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0px', fontSize: '0.8rem', padding: '2px 4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: COLORS[index % COLORS.length], display: 'inline-block', flexShrink: 0 }}></span>
-                      <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }} title={entry.name}>{entry.name}</span>
-                    </div>
-                    <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{percent.toFixed(1)}%</strong>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // --- 컴포넌트: 환율 변동 차트 모달 ---
-  const ExchangeRateModal = () => {
-    if (!showExchangeModal) return null;
-
-    // 데이터가 없을 경우를 대비한 방어 로직
-    if (exchangeHistory.length === 0) {
-      return (
-        <div className="modal-overlay" onClick={() => setShowExchangeModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '600px', padding: '32px', textAlign: 'center' }}>
-            <button className="modal-close" onClick={() => setShowExchangeModal(false)}>×</button>
-            <p>환율 데이터를 불러오는 중입니다...</p>
-          </div>
-        </div>
-      );
-    }
-
-    // 실제 히스토리 데이터를 차트 형식에 맞게 변환
-    const chartData = exchangeHistory.map((item, index) => ({
-      ...item,
-      displayDate: index === exchangeHistory.length - 1 ? '오늘' : item.date,
-      fullDate: item.date
-    }));
-
-    const minRate = Math.min(...chartData.map(d => d.rate)) - 5;
-    const maxRate = Math.max(...chartData.map(d => d.rate)) + 5;
-
-    return (
-      <div className="modal-overlay" onClick={() => setShowExchangeModal(false)}>
-        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', padding: '32px' }}>
-          <button className="modal-close" onClick={() => setShowExchangeModal(false)}>×</button>
-          <h3 style={{ marginBottom: '8px', fontSize: '1.5rem', textAlign: 'center' }}>🇺🇸 원/달러 환율 추이 (실제 데이터)</h3>
-          <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>야후 파이낸스 기준 최근 30일간의 실제 환율 흐름입니다.</p>
-          
-          <div style={{ width: '100%', height: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis 
-                  dataKey="displayDate" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} 
-                  interval={4} 
-                  dy={10} 
-                />
-                <YAxis hide domain={[minRate, maxRate]} />
-                <Tooltip 
-                  labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
-                  contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
-                  labelFormatter={(label, payload) => {
-                    if (label === '오늘') return `오늘 (${payload[0]?.payload.fullDate})`;
-                    return label;
-                  }}
-                  formatter={(value: number, name: string) => {
-                    if (name === '환율영역') return [null, null];
-                    return [`${value.toLocaleString()} 원`, '환율'];
-                  }}
-                />
-                <Area type="monotone" dataKey="rate" name="환율영역" stroke="none" fillOpacity={1} fill="url(#colorRate)" />
-                <Line 
-                  type="monotone" 
-                  dataKey="rate" 
-                  stroke="#3b82f6" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#0f172a' }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px 24px', borderRadius: '16px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-              <span className="text-secondary" style={{ fontSize: '0.85rem' }}>현재 실시간 환율: </span>
-              <strong style={{ fontSize: '1.2rem', color: '#3b82f6' }}>{exchangeRate.toLocaleString()} KRW</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-  const AddStockModal = () => {
-    if (!showAddModal) return null;
-
-    return (
-      <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px', padding: '32px' }}>
-          <button className="modal-close" onClick={() => setShowAddModal(false)}>×</button>
-          <h3 style={{ marginBottom: '24px', fontSize: '1.5rem', textAlign: 'center' }}>
-            {addModalType === 'KR' ? '🇰🇷 한국 주식 추가' : '🇺🇸 미국 주식 추가'}
-          </h3>
-          
-          <form onSubmit={handleAddStock} className="flex-col" style={{ gap: '20px', width: '100%' }}>
-            {/* 종목 코드 입력란 */}
-            <div className="input-group" style={{ marginBottom: 0, width: '100%' }}>
-              <label className="input-label">종목 코드 (예: 005930, AAPL)</label>
-              <input 
-                type="text" 
-                className="glass-input" 
-                placeholder={addModalType === 'KR' ? "예: 005930" : "예: AAPL"} 
-                value={code} 
-                onChange={(e) => setCode(e.target.value)} 
-                style={{ width: '100%', boxSizing: 'border-box' }}
-                autoFocus
-              />
-            </div>
-            
-            {/* 매수 단가 및 보유 수량 (한 줄에 배치) */}
-            <div style={{ display: 'flex', gap: '16px', width: '100%' }}>
-              <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label className="input-label">매수 단가 ({addModalType === 'KR' ? '원' : '달러'})</label>
-                <input 
-                  type="number" 
-                  step="any" 
-                  className="glass-input" 
-                  placeholder="0" 
-                  value={avgPrice} 
-                  onChange={(e) => setAvgPrice(e.target.value)} 
-                  style={{ width: '100%', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label className="input-label">보유 수량</label>
-                <input 
-                  type="number" 
-                  step="any" 
-                  className="glass-input" 
-                  placeholder="0" 
-                  value={quantity} 
-                  onChange={(e) => setQuantity(e.target.value)} 
-                  style={{ width: '100%', boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {errorMsg && <p className="text-danger" style={{ fontSize: '0.875rem', textAlign: 'center', margin: 0 }}>{errorMsg}</p>}
-            
-            {/* 버튼 영역 */}
-            <div style={{ display: 'flex', gap: '12px', marginTop: '10px', width: '100%' }}>
-              <button 
-                type="button" 
-                className="glass-button" 
-                style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }} 
-                onClick={() => setShowAddModal(false)}
-              >
-                취소
-              </button>
-              <button 
-                type="submit" 
-                className="glass-button" 
-                style={{ flex: 2 }} 
-                disabled={loading}
-              >
-                {loading ? '검색 중...' : '추가하기'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
+  // --- 특정 자산 섹션(테이블) 렌더링 함수 ---
 
   // --- 테이블 렌더링 함수 ---
   const renderStockTable = (
@@ -633,8 +453,7 @@ export default function Home() {
                     <th style={{ cursor: 'pointer' }} onClick={() => handleSort('currentPrice')}>현재가 <SortIcon columnKey="currentPrice" /></th>
                     <th style={{ cursor: 'pointer' }} onClick={() => handleSort('investment')}>총 매수금액 <SortIcon columnKey="investment" /></th>
                     <th style={{ cursor: 'pointer' }} onClick={() => handleSort('current')}>평가총액 <SortIcon columnKey="current" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('returnAmount')}>수익금 <SortIcon columnKey="returnAmount" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('returnPercent')}>수익률 <SortIcon columnKey="returnPercent" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('returnAmount')}>수익금 (수익률) <SortIcon columnKey="returnAmount" /></th>
                     <th style={{ cursor: 'pointer' }} onClick={() => handleSort('current')}>비중 <SortIcon columnKey="current" /></th>
                     <th>관리</th>
                   </tr>
@@ -675,8 +494,10 @@ export default function Home() {
                         <td>{editingStockId === item.id && item.currency === 'GOLD' ? <input type="number" step="any" className="glass-input" style={{ padding: '4px 8px', width: '100px', background: 'rgba(0,0,0,0.5)' }} value={editStockData.currentPrice} onChange={(e) => setEditStockData({...editStockData, currentPrice: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') saveEditStock(item.id); if (e.key === 'Escape') setEditingStockId(null); }} /> : <div onClick={() => item.currency === 'GOLD' && startEditStock(item)} style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default' }}><div>{formatMoney(item.currentPrice, item.currency)}</div>{item.currency !== 'GOLD' && <div className={(item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem', marginTop: '4px' }}>{(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%</div>}</div>}</td>
                         <td>{formatMoney(investment, item.currency)}</td>
                         <td>{formatMoney(current, item.currency)}</td>
-                        <td className={returnAmount >= 0 ? 'text-success' : 'text-danger'}>{returnAmount >= 0 ? '+' : ''}{formatMoney(returnAmount, item.currency)}</td>
-                        <td className={returnPercent >= 0 ? 'text-success' : 'text-danger'}>{returnPercent >= 0 ? '+' : ''}{returnPercent.toFixed(2)}%</td>
+                        <td className={returnAmount >= 0 ? 'text-success' : 'text-danger'}>
+                          <div style={{ fontWeight: 600 }}>{returnAmount >= 0 ? '+' : ''}{formatMoney(returnAmount, item.currency)}</div>
+                          <div style={{ fontSize: '0.75rem', marginTop: '2px', opacity: 0.8 }}>({returnPercent >= 0 ? '+' : ''}{returnPercent.toFixed(2)}%)</div>
+                        </td>
                         <td>{weightPercent.toFixed(1)}%</td>
                         <td style={{ textAlign: 'center' }}>
                           <button 
@@ -718,8 +539,12 @@ export default function Home() {
                     <td colSpan={4} style={{ textAlign: 'right' }}>총 합계</td>
                     <td>{formatMoney(sectionStockInvestment + cash, currency)}</td>
                     <td>{formatMoney(sectionTotalValue, currency)}</td>
-                    <td className={sectionStockValue - sectionStockInvestment >= 0 ? 'text-success' : 'text-danger'}>{sectionStockValue - sectionStockInvestment >= 0 ? '+' : ''}{formatMoney(sectionStockValue - sectionStockInvestment, currency)}</td>
-                    <td className={sectionStockValue - sectionStockInvestment >= 0 ? 'text-success' : 'text-danger'}>{(sectionStockInvestment + cash) > 0 ? (sectionStockValue - sectionStockInvestment >= 0 ? '+' : '') + ((sectionStockValue - sectionStockInvestment) / (sectionStockInvestment + cash) * 100).toFixed(2) + '%' : '0.00%'}</td>
+                    <td className={sectionStockValue - sectionStockInvestment >= 0 ? 'text-success' : 'text-danger'}>
+                      <div style={{ fontWeight: 'bold' }}>{sectionStockValue - sectionStockInvestment >= 0 ? '+' : ''}{formatMoney(sectionStockValue - sectionStockInvestment, currency)}</div>
+                      <div style={{ fontSize: '0.85rem', marginTop: '2px', opacity: 0.9 }}>
+                        {(sectionStockInvestment + cash) > 0 ? (sectionStockValue - sectionStockInvestment >= 0 ? '+' : '') + ((sectionStockValue - sectionStockInvestment) / (sectionStockInvestment + cash) * 100).toFixed(2) + '%' : '0.00%'}
+                      </div>
+                    </td>
                     <td>100.0%</td><td></td>
                   </tr>
                 </tfoot>
@@ -739,11 +564,11 @@ export default function Home() {
         <p className="text-secondary">주식부터 금현물까지, 실시간 자산 현황을 한눈에 관리하세요.</p>
       </header>
 
-      {/* 요약 대시보드 - 좌우 패널 분리 레이아웃 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 450px', gap: '24px', marginBottom: '32px', alignItems: 'stretch' }}>
+      {/* 요약 대시보드 - 좌우 패널 분리 레이아웃 (반응형 클래스 적용) */}
+      <div className="dashboard-grid">
         
         {/* 왼쪽 패널: 전체 자산 수치 요약 - 프리미엄 디자인 적용 */}
-        <section className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <section className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
           {/* 상단 헤더 영역 */}
           <div className="flex-between" style={{ alignItems: 'flex-start' }}>
@@ -780,8 +605,8 @@ export default function Home() {
             </div>
           </div>
           
-          {/* 중앙 핵심 지표 영역 (카드 스타일) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+          {/* 중앙 핵심 지표 영역 (카드 스타일 - 반응형 적용) */}
+          <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             
             {/* 총 투자 원금 카드 */}
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -824,8 +649,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 하단 상세 현황 (현금 및 통화별) */}
-          <div style={{ paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '40px' }}>
+          {/* 하단 상세 현황 (현금 및 통화별 - 반응형 적용) */}
+          <div className="cash-details" style={{ paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ fontSize: '1.5rem' }}>🇰🇷</div>
               <div>
@@ -843,7 +668,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(255,215,0,0.05)', padding: '8px 20px', borderRadius: '16px', border: '1px solid rgba(255,215,0,0.1)' }}>
+            <div className="cash-total-card" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(255,215,0,0.05)', padding: '8px 20px', borderRadius: '16px', border: '1px solid rgba(255,215,0,0.1)' }}>
               <div style={{ fontSize: '1.5rem' }}>💵</div>
               <div style={{ textAlign: 'right' }}>
                 <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '2px' }}>총 보유 현금 합계</div>
@@ -890,15 +715,266 @@ export default function Home() {
       {renderStockTable('KRW', '🇰🇷 한국 주식 포트폴리오 (KRW)', cashKRW, setCashKRW, editingCashKRW, setEditingCashKRW, sortConfigKRW, setSortConfigKRW)}
       {renderStockTable('GOLD', '🏅 금현물 포트폴리오 (수동 관리)', cashGOLD, setCashGOLD, editingCashGOLD, setEditingCashGOLD, sortConfigGOLD, setSortConfigGOLD)}
 
-      {/* 각종 모달들 */}
-      <PieModal isOpen={showPieKRW} onClose={() => setShowPieKRW(false)} currency="KRW" cash={cashKRW} />
-      <PieModal isOpen={showPieUSD} onClose={() => setShowPieUSD(false)} currency="USD" cash={cashUSD} />
-      <PieModal isOpen={showPieGOLD} onClose={() => setShowPieGOLD(false)} currency="GOLD" cash={cashGOLD} />
+      {/* 각종 모달들 (독립된 컴포넌트로 호출) */}
+      <PieModal 
+        isOpen={showPieKRW} 
+        onClose={() => setShowPieKRW(false)} 
+        currency="KRW" 
+        cash={cashKRW} 
+        portfolio={portfolio}
+        formatMoney={formatMoney}
+      />
+      <PieModal 
+        isOpen={showPieUSD} 
+        onClose={() => setShowPieUSD(false)} 
+        currency="USD" 
+        cash={cashUSD} 
+        portfolio={portfolio}
+        formatMoney={formatMoney}
+      />
+      <PieModal 
+        isOpen={showPieGOLD} 
+        onClose={() => setShowPieGOLD(false)} 
+        currency="GOLD" 
+        cash={cashGOLD} 
+        portfolio={portfolio}
+        formatMoney={formatMoney}
+      />
       
-      <ExchangeRateModal />
+      <ExchangeRateModal 
+        isOpen={showExchangeModal}
+        onClose={() => setShowExchangeModal(false)}
+        exchangeHistory={exchangeHistory}
+        exchangeRate={exchangeRate}
+      />
       
       {/* 항목 추가 모달 */}
-      <AddStockModal />
+      <AddStockModal 
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        type={addModalType}
+        code={code}
+        setCode={setCode}
+        avgPrice={avgPrice}
+        setAvgPrice={setAvgPrice}
+        quantity={quantity}
+        setQuantity={setQuantity}
+        loading={loading}
+        errorMsg={errorMsg}
+        onSubmit={handleAddStock}
+      />
     </main>
   );
 }
+
+// --- 독립된 모달 컴포넌트 정의 (재렌더링 효율성을 위해 Home 외부에 정의) ---
+
+const PieModal = ({ isOpen, onClose, currency, cash, portfolio, formatMoney }: PieModalProps) => {
+  if (!isOpen) return null;
+
+  const data = portfolio
+    .filter(item => item.currency === currency)
+    .map(item => ({ name: item.name, value: item.currentPrice * item.quantity }));
+  if (cash > 0) data.push({ name: '💵 예수금 (현금)', value: cash });
+  data.sort((a, b) => b.value - a.value);
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px', height: '650px', display: 'flex', flexDirection: 'column' }}>
+        <button className="modal-close" onClick={onClose}>×</button>
+        <h3 style={{ marginBottom: '16px', textAlign: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+          {currency === 'KRW' ? '🇰🇷 한국 주식 비중' : currency === 'USD' ? '🇺🇸 미국 주식 비중' : '🏅 금현물 비중'}
+        </h3>
+        <div style={{ width: '100%', height: '300px', flexShrink: 0 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
+                {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+              </Pie>
+              <Tooltip formatter={(value: number) => formatMoney(value, currency)} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', marginTop: '16px', paddingRight: '8px' }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {data.map((entry, index) => {
+              const percent = total > 0 ? (entry.value / total) * 100 : 0;
+              return (
+                <li key={`item-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0px', fontSize: '0.8rem', padding: '2px 4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: COLORS[index % COLORS.length], display: 'inline-block', flexShrink: 0 }}></span>
+                    <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }} title={entry.name}>{entry.name}</span>
+                  </div>
+                  <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{percent.toFixed(1)}%</strong>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: ExchangeRateModalProps) => {
+  if (!isOpen) return null;
+
+  if (exchangeHistory.length === 0) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" style={{ maxWidth: '600px', padding: '32px', textAlign: 'center' }}>
+          <button className="modal-close" onClick={onClose}>×</button>
+          <p>환율 데이터를 불러오는 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const chartData = exchangeHistory.map((item, index) => ({
+    ...item,
+    displayDate: index === exchangeHistory.length - 1 ? '오늘' : item.date,
+    fullDate: item.date
+  }));
+
+  const minRate = Math.min(...chartData.map(d => d.rate)) - 5;
+  const maxRate = Math.max(...chartData.map(d => d.rate)) + 5;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', padding: '32px' }}>
+        <button className="modal-close" onClick={onClose}>×</button>
+        <h3 style={{ marginBottom: '8px', fontSize: '1.5rem', textAlign: 'center' }}>🇺🇸 원/달러 환율 추이 (실제 데이터)</h3>
+        <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>야후 파이낸스 기준 최근 30일간의 실제 환율 흐름입니다.</p>
+        
+        <div style={{ width: '100%', height: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <defs>
+                <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis 
+                dataKey="displayDate" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} 
+                interval={4} 
+                dy={10} 
+              />
+              <YAxis hide domain={[minRate, maxRate]} />
+              <Tooltip 
+                labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
+                contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
+                labelFormatter={(label, payload) => {
+                  if (label === '오늘') return `오늘 (${payload[0]?.payload.fullDate})`;
+                  return label;
+                }}
+                formatter={(value: number, name: string) => {
+                  if (name === '환율영역') return [null, null];
+                  return [`${value.toLocaleString()} 원`, '환율'];
+                }}
+              />
+              <Area type="monotone" dataKey="rate" name="환율영역" stroke="none" fillOpacity={1} fill="url(#colorRate)" />
+              <Line 
+                type="monotone" 
+                dataKey="rate" 
+                stroke="#3b82f6" 
+                strokeWidth={3} 
+                dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#0f172a' }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px 24px', borderRadius: '16px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <span className="text-secondary" style={{ fontSize: '0.85rem' }}>현재 실시간 환율: </span>
+            <strong style={{ fontSize: '1.2rem', color: '#3b82f6' }}>{exchangeRate.toLocaleString()} KRW</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AddStockModal = ({ isOpen, onClose, type, code, setCode, avgPrice, setAvgPrice, quantity, setQuantity, loading, errorMsg, onSubmit }: AddStockModalProps) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px', padding: '32px' }}>
+        <button className="modal-close" onClick={onClose}>×</button>
+        <h3 style={{ marginBottom: '24px', fontSize: '1.5rem', textAlign: 'center' }}>
+          {type === 'KR' ? '🇰🇷 한국 주식 추가' : '🇺🇸 미국 주식 추가'}
+        </h3>
+        
+        <form onSubmit={onSubmit} className="flex-col" style={{ gap: '20px', width: '100%' }}>
+          <div className="input-group" style={{ marginBottom: 0, width: '100%' }}>
+            <label className="input-label">종목 코드 (예: 005930, AAPL)</label>
+            <input 
+              type="text" 
+              className="glass-input" 
+              placeholder={type === 'KR' ? "예: 005930" : "예: AAPL"} 
+              value={code} 
+              onChange={(e) => setCode(e.target.value)} 
+              style={{ width: '100%', boxSizing: 'border-box' }}
+              autoFocus
+            />
+          </div>
+          
+          <div style={{ display: 'flex', gap: '16px', width: '100%' }}>
+            <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="input-label">매수 단가 ({type === 'KR' ? '원' : '달러'})</label>
+              <input 
+                type="number" 
+                step="any" 
+                className="glass-input" 
+                placeholder="0" 
+                value={avgPrice} 
+                onChange={(e) => setAvgPrice(e.target.value)} 
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="input-label">보유 수량</label>
+              <input 
+                type="number" 
+                step="any" 
+                className="glass-input" 
+                placeholder="0" 
+                value={quantity} 
+                onChange={(e) => setQuantity(e.target.value)} 
+                style={{ width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          {errorMsg && <p className="text-danger" style={{ fontSize: '0.875rem', textAlign: 'center', margin: 0 }}>{errorMsg}</p>}
+          
+          <div style={{ display: 'flex', gap: '12px', marginTop: '10px', width: '100%' }}>
+            <button 
+              type="button" 
+              className="glass-button" 
+              style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }} 
+              onClick={onClose}
+            >
+              취소
+            </button>
+            <button 
+              type="submit" 
+              className="glass-button" 
+              style={{ flex: 2 }} 
+              disabled={loading}
+            >
+              {loading ? '추가 중...' : '포트폴리오에 추가'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
