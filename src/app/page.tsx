@@ -681,7 +681,7 @@ export default function Home() {
         {/* 오른쪽 패널: 자산 배분 현황 (파이 차트) */}
         <section className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <h2 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', textAlign: 'center', width: '100%' }}>자산 배분 현황</h2>
-          <div style={{ width: '100%', height: '320px' }}>
+          <div className="pie-chart-container" style={{ width: '100%', height: '320px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={80} outerRadius={135} paddingAngle={5} dataKey="value" stroke="none">
@@ -781,7 +781,7 @@ const PieModal = ({ isOpen, onClose, currency, cash, portfolio, formatMoney }: P
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px', height: '650px', display: 'flex', flexDirection: 'column' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '550px', height: '650px', display: 'flex', flexDirection: 'column' }}>
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '16px', textAlign: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
           {currency === 'KRW' ? '🇰🇷 한국 주식 비중' : currency === 'USD' ? '🇺🇸 미국 주식 비중' : '🏅 금현물 비중'}
@@ -842,7 +842,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', padding: '32px' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '600px', padding: '32px' }}>
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '8px', fontSize: '1.5rem', textAlign: 'center' }}>🇺🇸 원/달러 환율 추이 (실제 데이터)</h3>
         <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>최근 30일간의 원/달러 환율 추이입니다.</p>
@@ -906,7 +906,7 @@ const AddStockModal = ({ isOpen, onClose, type, code, setCode, avgPrice, setAvgP
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px', padding: '32px' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95%', maxWidth: '450px', padding: '32px' }}>
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '24px', fontSize: '1.5rem', textAlign: 'center' }}>
           {type === 'KR' ? '🇰🇷 한국 주식 추가' : '🇺🇸 미국 주식 추가'}

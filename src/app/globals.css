@@ -281,6 +281,24 @@ h1, h2, h3 {
     margin-left: 0 !important;
     text-align: left !important;
   }
+
+  /* 테이블 폰트 축소 */
+  .glass-table th, .glass-table td {
+    font-size: 0.75rem !important;
+    padding: 10px 8px !important;
+  }
+
+  /* 모달 너비 유연화 */
+  .modal-content {
+    width: 95% !important;
+    max-width: none !important;
+    padding: 24px 16px !important;
+  }
+
+  /* 파이 차트 모바일 높이 조정 */
+  .pie-chart-container {
+    height: 250px !important;
+  }
 }
 
 /* Table Scroll Hint */
