@@ -679,19 +679,19 @@ export default function Home() {
         </section>
 
         {/* 오른쪽 패널: 자산 배분 현황 (파이 차트) */}
-        <section className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <h2 style={{ margin: '0 0 24px 0', fontSize: '1.25rem', textAlign: 'center', width: '100%' }}>자산 배분 현황</h2>
-          <div style={{ width: '100%', height: '200px' }}>
+        <section className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <h2 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', textAlign: 'center', width: '100%' }}>자산 배분 현황</h2>
+          <div style={{ width: '100%', height: '320px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value" stroke="none">
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={80} outerRadius={135} paddingAngle={5} dataKey="value" stroke="none">
                   {totalPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatMoney(value, 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ width: '100%', marginTop: '24px' }}>
+          <div style={{ width: '100%', marginTop: '10px' }}>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {totalPieData.map((entry, index) => {
                 const totalValue = totalPieData.reduce((sum, item) => sum + item.value, 0);
@@ -845,7 +845,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', padding: '32px' }}>
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '8px', fontSize: '1.5rem', textAlign: 'center' }}>🇺🇸 원/달러 환율 추이 (실제 데이터)</h3>
-        <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>야후 파이낸스 기준 최근 30일간의 실제 환율 흐름입니다.</p>
+        <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>최근 30일간의 원/달러 환율 추이입니다.</p>
         
         <div style={{ width: '100%', height: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <ResponsiveContainer width="100%" height="100%">
