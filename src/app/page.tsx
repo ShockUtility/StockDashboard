@@ -61,6 +61,7 @@ interface AddStockModalProps {
 
 export default function Home() {
   // --- 상태 관리 (State Management) ---
+  const [isMounted, setIsMounted] = useState(false); // [신규] 클라이언트 사이드 마운트 확인용
   const [portfolio, setPortfolio] = useState<StockItem[]>([]); // 내 전체 포트폴리오 리스트
   const [cashKRW, setCashKRW] = useState<number>(0); // 한국 주식 계좌 현금
   const [cashUSD, setCashUSD] = useState<number>(0); // 미국 주식 계좌 현금
@@ -127,6 +128,7 @@ export default function Home() {
 
   // 1. 컴포넌트가 처음 나타날 때 실행: 로컬 스토리지에서 데이터를 복구합니다.
   useEffect(() => {
+    setIsMounted(true); // 마운트 완료 표시
     const savedRate = localStorage.getItem('stock_exchange_rate');
     if (savedRate) {
       setExchangeRate(parseFloat(savedRate));
@@ -690,14 +692,16 @@ export default function Home() {
         <section className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <h2 style={{ margin: '0 0 10px 0', fontSize: '1.25rem', textAlign: 'center', width: '100%' }}>자산 배분 현황</h2>
           <div className="pie-chart-container" style={{ width: '100%', height: '320px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={70} outerRadius={115} paddingAngle={5} dataKey="value" stroke="none">
-                  {totalPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value: number) => formatMoney(value, 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={70} outerRadius={115} paddingAngle={5} dataKey="value" stroke="none">
+                    {totalPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatMoney(value, 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <div style={{ width: '100%', marginTop: '10px' }}>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -795,7 +799,7 @@ const PieModal = ({ isOpen, onClose, currency, cash, portfolio, formatMoney }: P
           {currency === 'KRW' ? '🇰🇷 한국 주식 비중' : currency === 'USD' ? '🇺🇸 미국 주식 비중' : '🏅 금현물 비중'}
         </h3>
         <div style={{ width: '100%', height: '300px', flexShrink: 0 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
               <Pie data={data} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
                 {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
@@ -856,7 +860,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
         <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>최근 30일간의 원/달러 환율 추이입니다.</p>
         
         <div style={{ width: '100%', height: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={chartData}>
               <defs>
                 <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
