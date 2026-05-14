@@ -1,7 +1,6 @@
 import FinanceDataReader as fdr
 import json
 import sys
-import pandas as pd
 from datetime import datetime, timedelta
 
 def get_exchange_rate():

@@ -1,6 +1,7 @@
 import sys
 import json
 import FinanceDataReader as fdr
+
 def get_stock_name(code, country="KR"):
     try:
         if country == "KR":
