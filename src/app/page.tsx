@@ -828,7 +828,7 @@ export default function Home() {
                   <Pie data={totalPieData} cx="50%" cy="50%" innerRadius={70} outerRadius={115} paddingAngle={5} dataKey="value" stroke="none">
                     {totalPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatMoney(value, 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                  <Tooltip formatter={(value: any) => formatMoney(Number(value), 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -942,7 +942,7 @@ const PieModal = ({ isOpen, onClose, currency, cash, portfolio, formatMoney }: P
               <Pie data={data} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
                 {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(value: number) => formatMoney(value, currency)} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+              <Tooltip formatter={(value: any) => formatMoney(Number(value), currency)} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -1026,7 +1026,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
                   const dateStr = label === '오늘' ? payload[0]?.payload.fullDate : label;
                   return formatDateLabel(dateStr);
                 }}
-                formatter={(value: number, name: string) => {
+                formatter={(value: any, name: any) => {
                   if (name === '환율영역') return [null, null];
                   return [`${value.toLocaleString()} 원`, '환율'];
                 }}
@@ -1243,7 +1243,7 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
                   contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
                   labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
                   labelFormatter={formatDateLabel}
-                  formatter={(value: number) => [formatMoney(value, stock.currency), '종가']}
+                  formatter={(value: any) => [formatMoney(Number(value), stock.currency), '종가']}
                 />
                 <ReferenceLine 
                   y={stock.avgPrice} 
