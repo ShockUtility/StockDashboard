@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, Area, AreaChart, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, Area, AreaChart, ReferenceLine, ComposedChart, Bar } from 'recharts';
 
 // 파이 차트 색상 팔레트: 각 자산의 비중을 시각적으로 구분하기 위해 사용합니다.
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#6366f1', '#14b8a6', '#84cc16'];
@@ -1133,8 +1133,60 @@ const AddStockModal = ({ isOpen, onClose, type, code, setCode, avgPrice, setAvgP
   );
 };
 
+const CandlestickShape = (props: any) => {
+  const { x, y, width, height, payload } = props;
+  const { open, close, high, low } = payload;
+  const isUp = close >= open; // 한국식 (동일할경우 빨강)
+  const color = isUp ? '#ef4444' : '#3b82f6';
+  
+  const totalValue = high - low || 1; 
+  const pixelPerValue = height / totalValue;
+  
+  const highY = y;
+  const lowY = y + height;
+  const openY = y + (high - open) * pixelPerValue;
+  const closeY = y + (high - close) * pixelPerValue;
+  
+  const bodyTop = Math.min(openY, closeY);
+  const bodyBottom = Math.max(openY, closeY);
+  let bodyHeight = bodyBottom - bodyTop;
+  if (bodyHeight < 1) bodyHeight = 1; 
+  
+  const halfWidth = width / 2;
+  const centerX = x + halfWidth;
+  
+  return (
+    <g>
+      <line x1={centerX} y1={highY} x2={centerX} y2={bodyTop} stroke={color} strokeWidth={1.5} />
+      <line x1={centerX} y1={bodyBottom} x2={centerX} y2={lowY} stroke={color} strokeWidth={1.5} />
+      <rect x={x} y={bodyTop} width={width} height={bodyHeight} fill={color} />
+    </g>
+  );
+};
+
+const ReferenceLabel = (props: any) => {
+  const { viewBox, value, fill } = props;
+  const { x, y } = viewBox;
+  return (
+    <g>
+      <rect 
+        x={x + 10} 
+        y={y - 20} 
+        width={String(value).length * 7 + 10} 
+        height={16} 
+        fill="rgba(15, 23, 42, 0.9)" 
+        rx={4} 
+      />
+      <text x={x + 15} y={y - 8} fill={fill} fontSize={11} fontWeight={700}>
+        {value}
+      </text>
+    </g>
+  );
+};
+
 const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailModalProps) => {
-  const [history, setHistory] = useState<{date: string, price: number}[]>([]);
+  const [history, setHistory] = useState<{date: string, price: number, open: number, high: number, low: number, close: number, candleData: number[]}[]>([]);
+  const [chartType, setChartType] = useState<'line' | 'candle'>('line');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -1147,7 +1199,11 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
           const res = await fetch(`/api/stock-history?code=${encodeURIComponent(stock.code)}&country=${stock.currency === 'USD' ? 'US' : 'KR'}`);
           const data = await res.json();
           if (res.ok && data.history) {
-            setHistory(data.history);
+            const mappedHistory = data.history.map((h: any) => ({
+              ...h,
+              candleData: [h.low, h.high]
+            }));
+            setHistory(mappedHistory);
           } else {
             setError(data.error || '데이터를 가져오지 못했습니다.');
           }
@@ -1213,6 +1269,18 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
           </div>
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '12px' }}>
+          <button 
+            onClick={() => setChartType('line')} 
+            style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'line' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+            라인 차트
+          </button>
+          <button 
+            onClick={() => setChartType('candle')} 
+            style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'candle' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+            캔들 차트
+          </button>
+        </div>
         <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', position: 'relative' }}>
           {loading ? (
             <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -1224,35 +1292,92 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history}>
-                <defs>
-                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis 
-                  dataKey="date" 
-                  hide={true}
-                />
-                <YAxis 
-                  domain={[minPrice, maxPrice]} 
-                  hide={true}
-                />
-                <Tooltip 
-                  contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                  labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
-                  labelFormatter={(label: any) => formatDateLabel(String(label))}
-                  formatter={(value: any) => [formatMoney(Number(value), stock.currency), '종가']}
-                />
-                <ReferenceLine 
-                  y={stock.avgPrice} 
-                  stroke="#f59e0b" 
-                  strokeDasharray="5 5" 
-                  label={{ value: formatMoney(stock.avgPrice, stock.currency), position: 'insideTopRight', fill: '#f59e0b', fontSize: 12, fontWeight: 600, dy: -10 }} 
-                />
-                <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
-              </AreaChart>
+              {chartType === 'line' ? (
+                <AreaChart data={history}>
+                  <defs>
+                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} 
+                    tickFormatter={(str) => str.split('-').slice(1).join('/')}
+                    axisLine={false}
+                    tickLine={false}
+                    minTickGap={30}
+                  />
+                  <YAxis 
+                    orientation="right"
+                    domain={[minPrice, maxPrice]} 
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
+                    tickFormatter={(val) => val.toLocaleString()}
+                    axisLine={false}
+                    tickLine={false}
+                    width={50}
+                  />
+                  <Tooltip 
+                    contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                    labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
+                    labelFormatter={(label: any) => formatDateLabel(String(label))}
+                    formatter={(value: any) => [formatMoney(Number(value), stock.currency), '종가']}
+                  />
+                  <ReferenceLine 
+                    y={stock.avgPrice} 
+                    stroke="#f59e0b" 
+                    strokeDasharray="5 5" 
+                    label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
+                  />
+                  <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
+                </AreaChart>
+              ) : (
+                <ComposedChart data={history}>
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} 
+                    tickFormatter={(str) => str.split('-').slice(1).join('/')}
+                    axisLine={false}
+                    tickLine={false}
+                    minTickGap={30}
+                  />
+                  <YAxis 
+                    orientation="right"
+                    domain={[minPrice, maxPrice]} 
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
+                    tickFormatter={(val) => val.toLocaleString()}
+                    axisLine={false}
+                    tickLine={false}
+                    width={50}
+                  />
+                  <Tooltip 
+                    contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                    labelStyle={{ color: 'var(--text-secondary)', marginBottom: '8px' }}
+                    labelFormatter={(label: any) => formatDateLabel(String(label))}
+                    formatter={(value: any, name: any, props: any) => {
+                      const { open, high, low, close } = props.payload;
+                      const isUp = close >= open;
+                      const color = isUp ? '#ef4444' : '#3b82f6';
+                      return [
+                        <div key="candle-tooltip" style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#fff' }}>
+                          <div>시가: {formatMoney(open, stock.currency)}</div>
+                          <div>고가: {formatMoney(high, stock.currency)}</div>
+                          <div>저가: {formatMoney(low, stock.currency)}</div>
+                          <div style={{ color, fontWeight: 700 }}>종가: {formatMoney(close, stock.currency)}</div>
+                        </div>,
+                        null
+                      ];
+                    }}
+                  />
+                  <ReferenceLine 
+                    y={stock.avgPrice} 
+                    stroke="#f59e0b" 
+                    strokeDasharray="5 5" 
+                    label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
+                  />
+                  <Bar dataKey="candleData" shape={<CandlestickShape />} />
+                </ComposedChart>
+              )}
             </ResponsiveContainer>
           )}
           <div style={{ position: 'absolute', bottom: '12px', right: '24px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>

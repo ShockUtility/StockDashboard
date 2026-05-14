@@ -23,12 +23,16 @@ def main():
             print(json.dumps({"error": f"[{code}] 데이터를 찾을 수 없습니다."}))
             sys.exit(1)
             
-        # 필요한 데이터만 추출 (날짜와 종가)
+        # 필요한 데이터만 추출 (날짜와 시,고,저,종가)
         history = []
         for index, row in df.iterrows():
             history.append({
                 "date": index.strftime('%Y-%m-%d'),
-                "price": float(row['Close'])
+                "price": float(row['Close']),
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close'])
             })
             
         result = {

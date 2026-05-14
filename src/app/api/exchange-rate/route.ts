@@ -6,7 +6,7 @@ export async function GET() {
   return new Promise<NextResponse>((resolve) => {
     const pythonExecutable = process.env.NODE_ENV === 'production' 
       ? '/usr/bin/python' 
-      : path.join(process.cwd(), '.venv', 'bin', 'python3');
+      : 'python3';
     const scriptPath = path.join(process.cwd(), 'python', 'get_exchange_rate.py');
 
     const pyProcess = spawn(pythonExecutable, [scriptPath]);
