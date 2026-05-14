@@ -1022,7 +1022,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
               <Tooltip 
                 labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
                 contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
-                labelFormatter={(label, payload) => {
+                labelFormatter={(label: any, payload: any) => {
                   const dateStr = label === '오늘' ? payload[0]?.payload.fullDate : label;
                   return formatDateLabel(dateStr);
                 }}
@@ -1242,7 +1242,7 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
                 <Tooltip 
                   contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
                   labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
-                  labelFormatter={formatDateLabel}
+                  labelFormatter={(label: any) => formatDateLabel(String(label))}
                   formatter={(value: any) => [formatMoney(Number(value), stock.currency), '종가']}
                 />
                 <ReferenceLine 
