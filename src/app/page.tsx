@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, Area, AreaChart, ReferenceLine } from 'recharts';
 
 // 파이 차트 색상 팔레트: 각 자산의 비중을 시각적으로 구분하기 위해 사용합니다.
@@ -126,6 +126,7 @@ export default function Home() {
   const [avgPrice, setAvgPrice] = useState(''); // 매수 단가
   const [quantity, setQuantity] = useState(''); // 수량
   const [errorMsg, setErrorMsg] = useState(''); // 에러 메시지
+  const fileInputRef = useRef<HTMLInputElement>(null); // 파일 입력 참조
 
   // --- 데이터 통신 및 효과 (Effects) ---
 
@@ -314,6 +315,78 @@ export default function Home() {
   const handleShowDetail = (item: StockItem) => {
     setSelectedStock(item);
     setShowDetailModal(true);
+  };
+
+  // --- 데이터 내보내기/불러오기 로직 ---
+  const handleExport = () => {
+    const exportData = {
+      portfolio,
+      cash: { KRW: cashKRW, USD: cashUSD, GOLD: cashGOLD }
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadAnchorNode.setAttribute("download", `portfolio_backup_${dateStr}.json`);
+    document.body.appendChild(downloadAnchorNode); // Firefox 대응
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImportClick = () => {
+    if (confirm('기존 데이터가 모두 삭제되고 업로드한 파일의 데이터로 덮어쓰기 됩니다. 계속하시겠습니까?')) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (json.portfolio) {
+          setPortfolio(json.portfolio);
+        }
+        if (json.cash) {
+          setCashKRW(json.cash.KRW || 0);
+          setCashUSD(json.cash.USD || 0);
+          setCashGOLD(json.cash.GOLD || 0);
+        }
+        alert('포트폴리오 데이터를 성공적으로 불러왔습니다.');
+      } catch (error) {
+        alert('올바르지 않은 파일 형식입니다.');
+        console.error("파일 파싱 에러:", error);
+      } finally {
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleResetData = () => {
+    if (confirm('모든 포트폴리오 데이터와 예수금이 초기화됩니다. 정말 삭제하시겠습니까? (이 작업은 되돌릴 수 없습니다)')) {
+      // 금현물 기본 항목 복구
+      setPortfolio([{
+        id: 'default-gold-' + Date.now(),
+        code: 'MANUAL',
+        name: '금 99.99_1kg',
+        quantity: 0,
+        avgPrice: 0,
+        currentPrice: 0,
+        currency: 'GOLD'
+      }]);
+      // 한국/미국/금현물 예수금 초기화(기본값 0)
+      setCashKRW(0);
+      setCashUSD(0);
+      setCashGOLD(0);
+      alert('데이터가 모두 초기화되었습니다.');
+    }
   };
 
   // --- 자산 계산 로직 ---
@@ -511,13 +584,19 @@ export default function Home() {
                             />
                           ) : (
                             <>
-                              <strong 
-                                onClick={() => handleShowDetail(item)}
-                                style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', cursor: 'pointer', color: 'var(--accent-blue)', textDecoration: 'underline', textUnderlineOffset: '4px' }} 
-                                title="클릭하여 상세 차트 보기"
-                              >
-                                {item.name}
-                              </strong>
+                              {item.currency === 'GOLD' ? (
+                                <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', color: 'var(--text-primary)' }}>
+                                  {item.name}
+                                </strong>
+                              ) : (
+                                <strong 
+                                  onClick={() => handleShowDetail(item)}
+                                  style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', cursor: 'pointer', color: 'var(--accent-blue)', textDecoration: 'underline', textUnderlineOffset: '4px' }} 
+                                  title="클릭하여 상세 차트 보기"
+                                >
+                                  {item.name}
+                                </strong>
+                              )}
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.code}</div>
                             </>
                           )}
@@ -600,9 +679,29 @@ export default function Home() {
   return (
     <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* 헤더 섹션 */}
-      <header style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <h1 className="gradient-text" style={{ fontSize: '2.5rem' }}>내 자산 포트폴리오 Vibe</h1>
-        <p className="text-secondary">주식부터 금현물까지, 실시간 자산 현황을 한눈에 관리하세요.</p>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '48px' }}>
+        <div>
+          <h1 className="gradient-text" style={{ fontSize: '2.5rem', textAlign: 'left', marginBottom: '10px', marginTop: 0 }}>내 자산 포트폴리오 Vibe</h1>
+          <p className="text-secondary" style={{ textAlign: 'left', margin: 0 }}>주식부터 금현물까지, 실시간 자산 현황을 한눈에 관리하세요.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="glass-button" style={{ padding: '8px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.2)' }} onClick={handleExport}>
+            ⬇️ 데이터 내보내기
+          </button>
+          <button className="glass-button" style={{ padding: '8px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.2)' }} onClick={handleImportClick}>
+            ⬆️ 데이터 불러오기
+          </button>
+          <button className="glass-button" style={{ padding: '8px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)' }} onClick={handleResetData}>
+            🗑️ 데이터 초기화
+          </button>
+          <input 
+            type="file" 
+            accept=".json" 
+            ref={fileInputRef} 
+            onChange={handleImportFileChange} 
+            style={{ display: 'none' }} 
+          />
+        </div>
       </header>
 
       {/* 요약 대시보드 - 좌우 패널 분리 레이아웃 (반응형 클래스 적용) */}
