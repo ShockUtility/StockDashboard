@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: '종목 코드가 필요합니다.' }, { status: 400 });
   }
 
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     // 프로젝트 루트 기준 파이썬 경로 설정 (.venv 내부)
     const pythonExecutable = path.join(process.cwd(), '.venv', 'bin', 'python3');
     const scriptPath = path.join(process.cwd(), 'python', 'get_stock.py');

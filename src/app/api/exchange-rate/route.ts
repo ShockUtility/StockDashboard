@@ -3,7 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 export async function GET() {
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     const pythonExecutable = path.join(process.cwd(), '.venv', 'bin', 'python3');
     const scriptPath = path.join(process.cwd(), 'python', 'get_exchange_rate.py');
 
