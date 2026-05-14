@@ -12,8 +12,9 @@ export async function GET(request: Request) {
   }
 
   return new Promise<NextResponse>((resolve) => {
-    // 프로젝트 루트 기준 파이썬 경로 설정 (.venv 내부)
-    const pythonExecutable = path.join(process.cwd(), '.venv', 'bin', 'python3');
+    const pythonExecutable = process.env.NODE_ENV === 'production' 
+      ? '/usr/bin/python' 
+      : path.join(process.cwd(), '.venv', 'bin', 'python3');
     const scriptPath = path.join(process.cwd(), 'python', 'get_stock.py');
 
     // 파이썬 프로세스 실행
