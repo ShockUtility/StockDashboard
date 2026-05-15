@@ -87,6 +87,7 @@ export default function Home() {
   const [editingCashGOLD, setEditingCashGOLD] = useState(false);
   const [loading, setLoading] = useState(false); // 데이터 로딩 상태
   const [refreshProgress, setRefreshProgress] = useState<number>(0); // 전체 업데이트 진행률
+  const [refreshIndex, setRefreshIndex] = useState<number>(0); // 현재 업데이트 중인 종목 순서
   const [refreshingStockId, setRefreshingStockId] = useState<string | null>(null); // 현재 업데이트 중인 종목 ID
   const [pendingStockIds, setPendingStockIds] = useState<string[]>([]); // 대기 중인 종목 ID 목록
 
@@ -320,6 +321,7 @@ export default function Home() {
         const item = targetItems[i];
         
         // 현재 처리 중인 종목 표기 및 대기열에서 제거
+        setRefreshIndex(i + 1);
         setRefreshingStockId(item.id);
         setPendingStockIds(prev => prev.filter(id => id !== item.id));
         
@@ -353,6 +355,7 @@ export default function Home() {
       setRefreshingStockId(null);
       setPendingStockIds([]);
       setRefreshProgress(0);
+      setRefreshIndex(0);
     }
   };
 
@@ -668,15 +671,23 @@ export default function Home() {
                               onClick={() => item.currency === 'GOLD' && startEditStock(item)} 
                               style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default', opacity: pendingStockIds.includes(item.id) ? 0.5 : 1 }}
                             >
-                              {/* [수정] 갱신 중 상태와 대기 상태 표시 */}
+                              {/* [수정] 텍스트 제거 및 흰색 프로그레스 바 표시 */}
                               {refreshingStockId === item.id ? (
-                                <div style={{ color: '#3b82f6', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid rgba(59,130,246,0.3)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
-                                  갱신 중...
+                                <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      width: '40%', 
+                                      height: '100%', 
+                                      background: '#fff', 
+                                      borderRadius: '2px',
+                                      animation: 'loading-slide 1s infinite ease-in-out'
+                                    }}></div>
+                                  </div>
                                 </div>
                               ) : pendingStockIds.includes(item.id) ? (
-                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                  ⏳ 대기 중
+                                <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}></div>
                                 </div>
                               ) : (
                                 <>
@@ -769,6 +780,10 @@ export default function Home() {
     <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto' }}>
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes loading-slide {
+          0% { left: -40%; }
+          100% { left: 100%; }
+        }
       `}</style>
       {/* 헤더 섹션 */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '48px' }}>
@@ -832,7 +847,7 @@ export default function Home() {
                 <span style={{ color: '#3b82f6' }}>●</span> 환율: 1 USD = {exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KRW
               </div>
               <button className="glass-button" style={{ width: 'auto', padding: '8px 20px', fontSize: '0.875rem', borderRadius: '12px' }} onClick={handleRefreshPrices} disabled={loading}>
-                {loading ? `업데이트 중... (${refreshProgress}%)` : '🔄 시세 새로고침'}
+                {loading ? `업데이트 중... (${refreshIndex} / ${portfolio.filter(p => p.currency !== 'GOLD').length})` : '🔄 시세 새로고침'}
               </button>
             </div>
           </div>
@@ -1277,7 +1292,7 @@ const ReferenceLabel = (props: any) => {
 };
 
 const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailModalProps) => {
-  const [history, setHistory] = useState<{date: string, price: number, open: number, high: number, low: number, close: number, candleData: number[]}[]>([]);
+  const [history, setHistory] = useState<{date: string, open: number, high: number, low: number, close: number, candleData: number[]}[]>([]);
   const [chartType, setChartType] = useState<'line' | 'candle'>('line');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1318,7 +1333,7 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
   const returnPercent = investment > 0 ? (returnAmount / investment) * 100 : 0;
 
   // 차트 최소/최대값 계산 (여백 포함 + 매수단가 포함)
-  const prices = history.map(h => h.price);
+  const prices = history.map(h => h.close);
   const allValues = prices.length > 0 ? [...prices, stock.avgPrice] : [stock.avgPrice];
   const minPrice = Math.min(...allValues) * 0.95;
   const maxPrice = Math.max(...allValues) * 1.05;
@@ -1427,7 +1442,7 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
                     strokeDasharray="5 5" 
                     label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
                   />
-                  <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
+                  <Area type="monotone" dataKey="close" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
                 </AreaChart>
               ) : (
                 <ComposedChart data={history}>

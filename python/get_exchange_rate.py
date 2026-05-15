@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 
 def get_exchange_rate():
     try:
-        # 최근 50일간의 데이터를 조회하여 영업일 및 최신성 확보
+        # [최적화] 최근 30일치 데이터를 위해 약 40일간의 데이터를 조회합니다. (영업일 고려)
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=50)
+        start_date = end_date - timedelta(days=40)
         
         # FinanceDataReader를 사용하여 조회 (USDKRW=X 티커가 실시간성이 높음)
         df = fdr.DataReader('USDKRW=X', start_date.strftime('%Y-%m-%d'))
@@ -37,8 +37,8 @@ def get_exchange_rate():
         # 가장 최신 데이터 30개 추출
         df = df.tail(30)
         
-        # 현재 환율 (마지막 행)
-        current_rate = float(df.iloc[-1][close_col])
+        # 현재 환율 (마지막 행) - 소수점 2자리로 반올림하여 일관성 유지
+        current_rate = round(float(df.iloc[-1][close_col]), 2)
         
         # 과거 기록 리스트 생성
         history = []

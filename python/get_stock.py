@@ -1,6 +1,7 @@
 import sys
 import json
 import FinanceDataReader as fdr
+from datetime import datetime, timedelta
 
 def main():
     if len(sys.argv) < 2:
@@ -11,8 +12,13 @@ def main():
     country = sys.argv[2].upper() if len(sys.argv) > 2 else "AUTO"
 
     try:
-        # FinanceDataReader를 이용해 최근 주가 가져오기
-        df = fdr.DataReader(code)
+        # [최적화] 전체 데이터를 가져오는 대신, 최근 10일치 데이터만 가져와서 속도를 대폭 향상시킵니다.
+        # 시세 새로고침에는 오늘과 어제의 종가만 필요하기 때문입니다.
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=10)
+        
+        df = fdr.DataReader(code, start=start_date.strftime('%Y-%m-%d'))
+        
         if df.empty:
             print(json.dumps({"error": f"[{code}] 데이터를 찾을 수 없습니다. 종목 코드를 확인해주세요."}))
             sys.exit(1)

@@ -23,12 +23,15 @@ def main():
             print(json.dumps({"error": f"[{code}] 데이터를 찾을 수 없습니다."}))
             sys.exit(1)
             
+        # [최적화] 데이터 안정성을 위해 결측치(NaN)가 있는 행은 제거합니다.
+        df = df.dropna()
+            
         # 필요한 데이터만 추출 (날짜와 시,고,저,종가)
         history = []
         for index, row in df.iterrows():
+            # [최적화] 중복되는 'price' 필드를 제거하고 'close'로 통일했습니다.
             history.append({
                 "date": index.strftime('%Y-%m-%d'),
-                "price": float(row['Close']),
                 "open": float(row['Open']),
                 "high": float(row['High']),
                 "low": float(row['Low']),
