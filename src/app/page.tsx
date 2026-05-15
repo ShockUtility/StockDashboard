@@ -258,26 +258,65 @@ export default function Home() {
     }
   };
 
-  // 전체 시세 업데이트
+  // 전체 시세 업데이트 (최적화: 다중 종목 한 번에 조회)
   const handleRefreshPrices = async () => {
     setLoading(true);
     try {
       await fetchExchangeRate();
-      const updatedPortfolio = await Promise.all(
-        portfolio.map(async (item) => {
-          if (item.currency === 'GOLD') return item;
-          const countryParam = item.currency === 'USD' ? 'US' : 'KR';
-          const res = await fetch(`/api/stock?code=${encodeURIComponent(item.code)}&country=${countryParam}`);
-          if (res.ok) {
-            const data = await res.json();
-            return { ...item, currentPrice: data.currentPrice, changePercent: data.changePercent };
-          }
-          return item;
-        })
-      );
+      
+      // 1. 조회할 종목(금현물 제외)들의 리스트 추출
+      const targetItems = portfolio
+        .filter(item => item.currency !== 'GOLD')
+        .map(item => ({
+          code: item.code,
+          country: item.currency === 'USD' ? 'US' : 'KR'
+        }));
+        
+      if (targetItems.length === 0) {
+        // 주식 종목이 없으면 바로 종료
+        setLoading(false);
+        return;
+      }
+      
+      // 2. 다중 조회 API 한 번에 호출
+      const res = await fetch('/api/stocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: targetItems })
+      });
+      
+      if (!res.ok) {
+        throw new Error('시세 새로고침 요청에 실패했습니다.');
+      }
+      
+      const results: any[] = await res.json();
+      
+      // 3. 응답받은 데이터(results)를 맵 형태로 구성하여 포트폴리오 업데이트 시 빠르게 참조
+      const resultsMap: Record<string, any> = {};
+      results.forEach(result => {
+        if (!result.error) {
+          resultsMap[result.code] = result;
+        }
+      });
+      
+      const updatedPortfolio = portfolio.map(item => {
+        if (item.currency === 'GOLD') return item;
+        
+        const newData = resultsMap[item.code];
+        if (newData) {
+          return { 
+            ...item, 
+            currentPrice: newData.currentPrice, 
+            changePercent: newData.changePercent 
+          };
+        }
+        return item; // 업데이트 실패 시 기존 데이터 유지
+      });
+      
       setPortfolio(updatedPortfolio);
     } catch (error) {
       console.error("업데이트 실패:", error);
+      alert('시세 새로고침 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
