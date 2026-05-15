@@ -11,9 +11,9 @@ def main():
     code = sys.argv[1].upper()
     country = sys.argv[2].upper() if len(sys.argv) > 2 else "AUTO"
     
-    # 기본값: 최근 60일간의 데이터를 가져와서 실거래일 기준 약 30~40개 확보
+    # 기본값: 최근 120일간의 데이터를 가져와서 이동평균선 계산을 위한 충분한 데이터 확보
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=60)
+    start_date = end_date - timedelta(days=120)
 
     try:
         # FinanceDataReader를 이용해 주가 이력 가져오기

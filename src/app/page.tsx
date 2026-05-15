@@ -643,7 +643,7 @@ export default function Home() {
                               ) : (
                                 <strong 
                                   onClick={() => handleShowDetail(item)}
-                                  style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', cursor: 'pointer', color: 'var(--accent-blue)', textDecoration: 'underline', textUnderlineOffset: '4px' }} 
+                                  style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px', cursor: 'pointer', color: '#a78bfa', textDecoration: 'underline', textUnderlineOffset: '4px' }} 
                                   title="클릭하여 상세 차트 보기"
                                 >
                                   {item.name}
@@ -880,7 +880,7 @@ export default function Home() {
             {/* 수익금 / 수익률 카드 */}
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: totalReturnAmountKRW >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: totalReturnAmountKRW >= 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   {totalReturnAmountKRW >= 0 ? '🔥' : '❄️'}
                 </div>
                 <span className="text-secondary" style={{ fontSize: '0.9rem', fontWeight: 500 }}>총 수익 현황</span>
@@ -1115,7 +1115,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
               </defs>
               <XAxis 
                 dataKey="displayDate" 
-                axisLine={false} 
+                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                 tickLine={false} 
                 tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} 
                 tickFormatter={(value, index) => {
@@ -1291,9 +1291,59 @@ const ReferenceLabel = (props: any) => {
   );
 };
 
+const CustomCandleTooltip = ({ active, payload, label, formatMoney, currency, formatDateLabel }: any) => {
+  if (active && payload && payload.length) {
+    // payload[0].payload에 해당 시점의 모든 데이터가 들어있습니다.
+    const data = payload[0].payload;
+    const { open, high, low, close, ma10, ma20 } = data;
+    const isUp = close >= open;
+    const color = isUp ? '#ef4444' : '#3b82f6';
+    
+    return (
+      <div style={{ 
+        background: 'rgba(15, 23, 42, 0.95)', 
+        border: '1px solid rgba(255,255,255,0.1)', 
+        borderRadius: '12px', 
+        padding: '12px',
+        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+        pointerEvents: 'none'
+      }}>
+        <div style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 600 }}>
+          {formatDateLabel(String(label))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#fff', fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+            <span>시가</span> <strong>{formatMoney(open, currency)}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+            <span>고가</span> <strong>{formatMoney(high, currency)}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+            <span>저가</span> <strong>{formatMoney(low, currency)}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px', color, fontWeight: 'bold', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '4px', marginTop: '2px' }}>
+            <span>종가</span> <span>{formatMoney(close, currency)}</span>
+          </div>
+          {(ma10 || ma20) && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '6px', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {ma10 && <div style={{ color: '#10b981', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <span>10일선</span> <span>{formatMoney(ma10, currency)}</span>
+              </div>}
+              {ma20 && <div style={{ color: '#8b5cf6', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <span>20일선</span> <span>{formatMoney(ma20, currency)}</span>
+              </div>}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailModalProps) => {
   const [history, setHistory] = useState<{date: string, open: number, high: number, low: number, close: number, candleData: number[]}[]>([]);
-  const [chartType, setChartType] = useState<'line' | 'candle'>('line');
+  const [chartType, setChartType] = useState<'line' | 'candle'>('candle');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -1306,11 +1356,25 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
           const res = await fetch(`/api/stock-history?code=${encodeURIComponent(stock.code)}&country=${stock.currency === 'USD' ? 'US' : 'KR'}`);
           const data = await res.json();
           if (res.ok && data.history) {
-            const mappedHistory = data.history.map((h: any) => ({
-              ...h,
-              candleData: [h.low, h.high]
-            }));
-            setHistory(mappedHistory);
+            // 1. 전체 데이터(약 60~65 거래일)에 대해 이동평균선을 먼저 계산합니다.
+            const fullHistory = data.history.map((h: any, index: number, array: any[]) => {
+              const getMA = (period: number) => {
+                if (index < period - 1) return null;
+                const subset = array.slice(index - period + 1, index + 1);
+                const sum = subset.reduce((acc: number, curr: any) => acc + curr.close, 0);
+                return sum / period;
+              };
+              return {
+                ...h,
+                ma10: getMA(10),
+                ma20: getMA(20),
+                candleData: [h.low, h.high]
+              };
+            });
+            
+            // 2. 이동평균선이 모두 확보된 최근 30일치 데이터만 필터링하여 상태에 저장합니다.
+            // (120일치를 가져왔으므로 마지막 30일 구간은 10일/20일선이 모두 계산되어 있습니다.)
+            setHistory(fullHistory.slice(-30));
           } else {
             setError(data.error || '데이터를 가져오지 못했습니다.');
           }
@@ -1334,9 +1398,15 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
 
   // 차트 최소/최대값 계산 (여백 포함 + 매수단가 포함)
   const prices = history.map(h => h.close);
-  const allValues = prices.length > 0 ? [...prices, stock.avgPrice] : [stock.avgPrice];
-  const minPrice = Math.min(...allValues) * 0.95;
-  const maxPrice = Math.max(...allValues) * 1.05;
+  // [수정] 상하 여백을 더 타이트하게 조정 (1% 여유)
+  const allValues = prices.length > 0 ? prices : [stock.avgPrice];
+  const minPrice = Math.min(...allValues) * 0.99; 
+  const maxPrice = Math.max(...allValues) * 1.01; 
+  
+  const getCandleColor = (item: any) => {
+    if (!item) return '#fff';
+    return item.close >= item.open ? '#ef4444' : '#3b82f6';
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -1382,17 +1452,36 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '12px' }}>
-          <button 
-            onClick={() => setChartType('line')} 
-            style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'line' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
-            라인 차트
-          </button>
-          <button 
-            onClick={() => setChartType('candle')} 
-            style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'candle' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
-            캔들 차트
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          {/* 좌측: 이평선 범례 (캔들 차트일 때만 표시) */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {chartType === 'candle' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#10b981' }}>
+                  <span style={{ width: '12px', height: '2px', background: '#10b981', display: 'inline-block' }}></span>
+                  <span>10일선</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#8b5cf6' }}>
+                  <span style={{ width: '12px', height: '2px', background: '#8b5cf6', display: 'inline-block' }}></span>
+                  <span>20일선</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 우측: 차트 타입 선택 버튼 */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={() => setChartType('line')} 
+              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'line' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+              라인 차트
+            </button>
+            <button 
+              onClick={() => setChartType('candle')} 
+              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'candle' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+              캔들 차트
+            </button>
+          </div>
         </div>
         <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', position: 'relative' }}>
           {loading ? (
@@ -1406,18 +1495,18 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'line' ? (
-                <AreaChart data={history}>
+                <AreaChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <XAxis 
                     dataKey="date" 
                     tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} 
                     tickFormatter={(str) => str.split('-').slice(1).join('/')}
-                    axisLine={false}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     tickLine={false}
                     minTickGap={30}
                   />
@@ -1426,7 +1515,7 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
                     domain={[minPrice, maxPrice]} 
                     tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
                     tickFormatter={(val) => val.toLocaleString()}
-                    axisLine={false}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     tickLine={false}
                     width={50}
                   />
@@ -1436,21 +1525,23 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
                     labelFormatter={(label: any) => formatDateLabel(String(label))}
                     formatter={(value: any) => [formatMoney(Number(value), stock.currency), '종가']}
                   />
-                  <ReferenceLine 
-                    y={stock.avgPrice} 
-                    stroke="#f59e0b" 
-                    strokeDasharray="5 5" 
-                    label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
-                  />
-                  <Area type="monotone" dataKey="close" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
+                  {stock.avgPrice >= minPrice && stock.avgPrice <= maxPrice && (
+                    <ReferenceLine 
+                      y={stock.avgPrice} 
+                      stroke="#f59e0b" 
+                      strokeDasharray="5 5" 
+                      label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
+                    />
+                  )}
+                  <Area type="monotone" dataKey="close" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#ef4444' }} />
                 </AreaChart>
               ) : (
-                <ComposedChart data={history}>
+                <ComposedChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
                   <XAxis 
                     dataKey="date" 
                     tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} 
                     tickFormatter={(str) => str.split('-').slice(1).join('/')}
-                    axisLine={false}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     tickLine={false}
                     minTickGap={30}
                   />
@@ -1459,43 +1550,28 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
                     domain={[minPrice, maxPrice]} 
                     tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
                     tickFormatter={(val) => val.toLocaleString()}
-                    axisLine={false}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                     tickLine={false}
                     width={50}
                   />
                   <Tooltip 
-                    contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                    labelStyle={{ color: 'var(--text-secondary)', marginBottom: '8px' }}
-                    labelFormatter={(label: any) => formatDateLabel(String(label))}
-                    formatter={(value: any, name: any, props: any) => {
-                      const { open, high, low, close } = props.payload;
-                      const isUp = close >= open;
-                      const color = isUp ? '#ef4444' : '#3b82f6';
-                      return [
-                        <div key="candle-tooltip" style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#fff' }}>
-                          <div>시가: {formatMoney(open, stock.currency)}</div>
-                          <div>고가: {formatMoney(high, stock.currency)}</div>
-                          <div>저가: {formatMoney(low, stock.currency)}</div>
-                          <div style={{ color, fontWeight: 700 }}>종가: {formatMoney(close, stock.currency)}</div>
-                        </div>,
-                        null
-                      ];
-                    }}
+                    content={<CustomCandleTooltip formatMoney={formatMoney} currency={stock.currency} formatDateLabel={formatDateLabel} />}
                   />
-                  <ReferenceLine 
-                    y={stock.avgPrice} 
-                    stroke="#f59e0b" 
-                    strokeDasharray="5 5" 
-                    label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
-                  />
-                  <Bar dataKey="candleData" shape={<CandlestickShape />} />
+                  {stock.avgPrice >= minPrice && stock.avgPrice <= maxPrice && (
+                    <ReferenceLine 
+                      y={stock.avgPrice} 
+                      stroke="#f59e0b" 
+                      strokeDasharray="5 5" 
+                      label={<ReferenceLabel value={formatMoney(stock.avgPrice, stock.currency)} fill="#f59e0b" />} 
+                    />
+                  )}
+                  <Line type="monotone" dataKey="ma10" stroke="#10b981" dot={false} strokeWidth={1.5} name="10일선" />
+                  <Line type="monotone" dataKey="ma20" stroke="#8b5cf6" dot={false} strokeWidth={1.5} name="20일선" />
+                  <Bar dataKey="candleData" shape={<CandlestickShape />} legendType="none" />
                 </ComposedChart>
               )}
             </ResponsiveContainer>
           )}
-          <div style={{ position: 'absolute', bottom: '12px', right: '24px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            최근 약 30거래일 추이
-          </div>
         </div>
 
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
