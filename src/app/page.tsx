@@ -86,6 +86,9 @@ export default function Home() {
   const [editingCashUSD, setEditingCashUSD] = useState(false);
   const [editingCashGOLD, setEditingCashGOLD] = useState(false);
   const [loading, setLoading] = useState(false); // 데이터 로딩 상태
+  const [refreshProgress, setRefreshProgress] = useState<number>(0); // 전체 업데이트 진행률
+  const [refreshingStockId, setRefreshingStockId] = useState<string | null>(null); // 현재 업데이트 중인 종목 ID
+  const [pendingStockIds, setPendingStockIds] = useState<string[]>([]); // 대기 중인 종목 ID 목록
 
   // 섹션 접기/펼치기 상태
   const [collapsedSections, setCollapsedSections] = useState<{[key: string]: boolean}>({
@@ -258,19 +261,47 @@ export default function Home() {
     }
   };
 
-  // 전체 시세 업데이트 (최적화: 다중 종목 한 번에 조회)
+  // 정렬 헬퍼 함수
+  const getSortedPortfolio = (items: StockItem[], sortConfig: SortConfig | null) => {
+    return [...items].sort((a, b) => {
+      if (!sortConfig) return 0;
+      const { key, direction } = sortConfig;
+      let aVal: any = 0; let bVal: any = 0;
+      const aInvest = a.avgPrice * a.quantity; const bInvest = b.avgPrice * b.quantity;
+      const aCurrent = a.currentPrice * a.quantity; const bCurrent = b.currentPrice * b.quantity;
+      switch(key) {
+        case 'name': aVal = a.name; bVal = b.name; break;
+        case 'quantity': aVal = a.quantity; bVal = b.quantity; break;
+        case 'avgPrice': aVal = a.avgPrice; bVal = b.avgPrice; break;
+        case 'currentPrice': 
+          aVal = a.changePercent ?? 0; 
+          bVal = b.changePercent ?? 0; 
+          break;
+        case 'investment': aVal = aInvest; bVal = bInvest; break;
+        case 'current': aVal = aCurrent; bVal = bCurrent; break;
+        case 'returnAmount': aVal = aCurrent - aInvest; bVal = bCurrent - bInvest; break;
+        case 'returnPercent': aVal = (aCurrent - aInvest) / (aInvest || 1); bVal = (bCurrent - bInvest) / (bInvest || 1); break;
+      }
+      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // 전체 시세 업데이트 (단일 종목 순차적 조회)
   const handleRefreshPrices = async () => {
     setLoading(true);
+    setRefreshProgress(0);
+    
     try {
       await fetchExchangeRate();
       
-      // 1. 조회할 종목(금현물 제외)들의 리스트 추출
-      const targetItems = portfolio
-        .filter(item => item.currency !== 'GOLD')
-        .map(item => ({
-          code: item.code,
-          country: item.currency === 'USD' ? 'US' : 'KR'
-        }));
+      // 1. 미국 주식과 한국 주식을 필터링하고 현재 화면의 정렬 상태에 맞게 정렬
+      const usItems = getSortedPortfolio(portfolio.filter(item => item.currency === 'USD'), sortConfigUSD);
+      const krItems = getSortedPortfolio(portfolio.filter(item => item.currency === 'KRW'), sortConfigKRW);
+      
+      // 미국 주식 -> 한국 주식 순서로 결합
+      const targetItems = [...usItems, ...krItems];
         
       if (targetItems.length === 0) {
         // 주식 종목이 없으면 바로 종료
@@ -278,47 +309,50 @@ export default function Home() {
         return;
       }
       
-      // 2. 다중 조회 API 한 번에 호출
-      const res = await fetch('/api/stocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: targetItems })
-      });
+      const totalCount = targetItems.length;
+      const targetIds = targetItems.map(item => item.id);
       
-      if (!res.ok) {
-        throw new Error('시세 새로고침 요청에 실패했습니다.');
+      // 초기 대기열 설정
+      setPendingStockIds(targetIds);
+      
+      // 2. 하나씩 순차적으로 업데이트 진행
+      for (let i = 0; i < totalCount; i++) {
+        const item = targetItems[i];
+        
+        // 현재 처리 중인 종목 표기 및 대기열에서 제거
+        setRefreshingStockId(item.id);
+        setPendingStockIds(prev => prev.filter(id => id !== item.id));
+        
+        const countryParam = item.currency === 'USD' ? 'US' : 'KR';
+        
+        try {
+          const res = await fetch(`/api/stock?code=${encodeURIComponent(item.code)}&country=${countryParam}`);
+          if (res.ok) {
+            const data = await res.json();
+            // 포트폴리오 상태 즉시 갱신
+            setPortfolio(prevPortfolio => prevPortfolio.map(pItem => {
+              if (pItem.id === item.id) {
+                return { ...pItem, currentPrice: data.currentPrice, changePercent: data.changePercent };
+              }
+              return pItem;
+            }));
+          }
+        } catch (err) {
+          console.error(`[${item.code}] 업데이트 실패:`, err);
+        }
+        
+        // 진행률 갱신
+        setRefreshProgress(Math.round(((i + 1) / totalCount) * 100));
       }
       
-      const results: any[] = await res.json();
-      
-      // 3. 응답받은 데이터(results)를 맵 형태로 구성하여 포트폴리오 업데이트 시 빠르게 참조
-      const resultsMap: Record<string, any> = {};
-      results.forEach(result => {
-        if (!result.error) {
-          resultsMap[result.code] = result;
-        }
-      });
-      
-      const updatedPortfolio = portfolio.map(item => {
-        if (item.currency === 'GOLD') return item;
-        
-        const newData = resultsMap[item.code];
-        if (newData) {
-          return { 
-            ...item, 
-            currentPrice: newData.currentPrice, 
-            changePercent: newData.changePercent 
-          };
-        }
-        return item; // 업데이트 실패 시 기존 데이터 유지
-      });
-      
-      setPortfolio(updatedPortfolio);
     } catch (error) {
       console.error("업데이트 실패:", error);
       alert('시세 새로고침 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+      setRefreshingStockId(null);
+      setPendingStockIds([]);
+      setRefreshProgress(0);
     }
   };
 
@@ -489,31 +523,7 @@ export default function Home() {
     });
     const sectionTotalValue = sectionStockValue + cash;
 
-    const sortedPortfolio = [...filteredPortfolio].sort((a, b) => {
-      if (!sortConfig) return 0;
-      const { key, direction } = sortConfig;
-      let aVal: any = 0; let bVal: any = 0;
-      const aInvest = a.avgPrice * a.quantity; const bInvest = b.avgPrice * b.quantity;
-      const aCurrent = a.currentPrice * a.quantity; const bCurrent = b.currentPrice * b.quantity;
-      switch(key) {
-        case 'name': aVal = a.name; bVal = b.name; break;
-        case 'quantity': aVal = a.quantity; bVal = b.quantity; break;
-        case 'avgPrice': aVal = a.avgPrice; bVal = b.avgPrice; break;
-        case 'currentPrice': 
-          // [수정] 현재가 헤더 클릭 시 실제 가격 대신 '변동률(changePercent)'을 기준으로 정렬합니다.
-          // 변동률 데이터가 없는 경우(예: 금현물) 0으로 처리합니다.
-          aVal = a.changePercent ?? 0; 
-          bVal = b.changePercent ?? 0; 
-          break;
-        case 'investment': aVal = aInvest; bVal = bInvest; break;
-        case 'current': aVal = aCurrent; bVal = bCurrent; break;
-        case 'returnAmount': aVal = aCurrent - aInvest; bVal = bCurrent - bInvest; break;
-        case 'returnPercent': aVal = (aCurrent - aInvest) / (aInvest || 1); bVal = (bCurrent - bInvest) / (bInvest || 1); break;
-      }
-      if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+    const sortedPortfolio = getSortedPortfolio(filteredPortfolio, sortConfig);
 
     const handleSort = (key: SortKey) => {
       let direction: SortDirection = 'asc';
@@ -656,16 +666,29 @@ export default function Home() {
                           ) : (
                             <div 
                               onClick={() => item.currency === 'GOLD' && startEditStock(item)} 
-                              style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default' }}
+                              style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default', opacity: pendingStockIds.includes(item.id) ? 0.5 : 1 }}
                             >
-                              {/* [수정] 현재가에도 변동률(changePercent)에 따라 'text-success' 또는 'text-danger' 클래스를 적용합니다. */}
-                              <div className={item.currency !== 'GOLD' ? ((item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger') : ''}>
-                                {formatMoney(item.currentPrice, item.currency)}
-                              </div>
-                              {item.currency !== 'GOLD' && (
-                                <div className={(item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem', marginTop: '4px' }}>
-                                  {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
+                              {/* [수정] 갱신 중 상태와 대기 상태 표시 */}
+                              {refreshingStockId === item.id ? (
+                                <div style={{ color: '#3b82f6', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid rgba(59,130,246,0.3)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+                                  갱신 중...
                                 </div>
+                              ) : pendingStockIds.includes(item.id) ? (
+                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                  ⏳ 대기 중
+                                </div>
+                              ) : (
+                                <>
+                                  <div className={item.currency !== 'GOLD' ? ((item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger') : ''}>
+                                    {formatMoney(item.currentPrice, item.currency)}
+                                  </div>
+                                  {item.currency !== 'GOLD' && (
+                                    <div className={(item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                                      {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
@@ -744,6 +767,9 @@ export default function Home() {
 
   return (
     <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto' }}>
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}</style>
       {/* 헤더 섹션 */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '48px' }}>
         <div>
@@ -806,7 +832,7 @@ export default function Home() {
                 <span style={{ color: '#3b82f6' }}>●</span> 환율: 1 USD = {exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KRW
               </div>
               <button className="glass-button" style={{ width: 'auto', padding: '8px 20px', fontSize: '0.875rem', borderRadius: '12px' }} onClick={handleRefreshPrices} disabled={loading}>
-                {loading ? '업데이트 중...' : '🔄 시세 새로고침'}
+                {loading ? `업데이트 중... (${refreshProgress}%)` : '🔄 시세 새로고침'}
               </button>
             </div>
           </div>
