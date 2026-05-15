@@ -603,7 +603,34 @@ export default function Home() {
                         </td>
                         <td>{editingStockId === item.id ? <input type="number" step="any" className="glass-input" style={{ padding: '4px 8px', width: '80px', background: 'rgba(0,0,0,0.5)' }} value={editStockData.quantity} onChange={(e) => setEditStockData({...editStockData, quantity: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') saveEditStock(item.id); if (e.key === 'Escape') setEditingStockId(null); }} /> : <span onClick={() => startEditStock(item)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>{item.quantity.toLocaleString()}</span>}</td>
                         <td>{editingStockId === item.id ? <input type="number" step="any" className="glass-input" style={{ padding: '4px 8px', width: '100px', background: 'rgba(0,0,0,0.5)' }} value={editStockData.avgPrice} onChange={(e) => setEditStockData({...editStockData, avgPrice: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') saveEditStock(item.id); if (e.key === 'Escape') setEditingStockId(null); }} /> : <span onClick={() => startEditStock(item)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>{formatMoney(item.avgPrice, item.currency)}</span>}</td>
-                        <td>{editingStockId === item.id && item.currency === 'GOLD' ? <input type="number" step="any" className="glass-input" style={{ padding: '4px 8px', width: '100px', background: 'rgba(0,0,0,0.5)' }} value={editStockData.currentPrice} onChange={(e) => setEditStockData({...editStockData, currentPrice: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') saveEditStock(item.id); if (e.key === 'Escape') setEditingStockId(null); }} /> : <div onClick={() => item.currency === 'GOLD' && startEditStock(item)} style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default' }}><div>{formatMoney(item.currentPrice, item.currency)}</div>{item.currency !== 'GOLD' && <div className={(item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem', marginTop: '4px' }}>{(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%</div>}</div>}</td>
+                                                <td>
+                          {editingStockId === item.id && item.currency === 'GOLD' ? (
+                            <input 
+                              type="number" 
+                              step="any" 
+                              className="glass-input" 
+                              style={{ padding: '4px 8px', width: '100px', background: 'rgba(0,0,0,0.5)' }} 
+                              value={editStockData.currentPrice} 
+                              onChange={(e) => setEditStockData({...editStockData, currentPrice: e.target.value})} 
+                              onKeyDown={(e) => { if (e.key === 'Enter') saveEditStock(item.id); if (e.key === 'Escape') setEditingStockId(null); }} 
+                            />
+                          ) : (
+                            <div 
+                              onClick={() => item.currency === 'GOLD' && startEditStock(item)} 
+                              style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default' }}
+                            >
+                              {/* [수정] 현재가에도 변동률(changePercent)에 따라 'text-success' 또는 'text-danger' 클래스를 적용합니다. */}
+                              <div className={item.currency !== 'GOLD' ? ((item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger') : ''}>
+                                {formatMoney(item.currentPrice, item.currency)}
+                              </div>
+                              {item.currency !== 'GOLD' && (
+                                <div className={(item.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                                  {(item.changePercent || 0) >= 0 ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
                         <td>{formatMoney(investment, item.currency)}</td>
                         <td>{formatMoney(current, item.currency)}</td>
                         <td className={returnAmount >= 0 ? 'text-success' : 'text-danger'}>
@@ -1245,7 +1272,13 @@ const StockDetailModal = ({ isOpen, onClose, stock, formatMoney }: StockDetailMo
             <p className="text-secondary" style={{ margin: 0 }}>{stock.code} • {stock.currency}</p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{formatMoney(stock.currentPrice, stock.currency)}</div>
+            {/* [수정] 상세 모달의 현재가에도 변동률에 따른 색상 클래스를 적용합니다. */}
+            <div 
+              className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}
+              style={{ fontSize: '1.8rem', fontWeight: 700 }}
+            >
+              {formatMoney(stock.currentPrice, stock.currency)}
+            </div>
             <div className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '1rem', fontWeight: 600 }}>
               {stock.changePercent !== undefined ? `${stock.changePercent >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%` : '-'}
             </div>
