@@ -232,6 +232,14 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '항목 정보를 불러오지 못했습니다.');
 
+      // 포트폴리오 타입과 실제 종목 시장 일치 여부 검사
+      if (addModalType === 'US' && data.market === 'KRX') {
+        throw new Error('미국 포트폴리오에는 한국 종목을 추가할 수 없습니다.');
+      }
+      if (addModalType === 'KR' && (data.market === 'NASDAQ' || data.market === 'NYSE' || data.market === 'AMEX')) {
+        throw new Error('한국 포트폴리오에는 미국 종목을 추가할 수 없습니다.');
+      }
+
       const newItem: StockItem = {
         id: Date.now().toString(),
         code: data.code,
@@ -1231,7 +1239,7 @@ const AddStockModal = ({ isOpen, onClose, type, code, setCode, avgPrice, setAvgP
               style={{ flex: 2 }} 
               disabled={loading}
             >
-              {loading ? '추가 중...' : '포트폴리오에 추가'}
+              {loading ? '추가 중...' : '추가'}
             </button>
           </div>
         </form>

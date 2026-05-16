@@ -31,9 +31,16 @@ def get_stock_name(code):
     try:
         with open(cache_file, 'r', encoding='utf-8') as f:
             cache_data = json.load(f)
-            return cache_data.get('stocks', {}).get(code, code)
+            stock_info = cache_data.get('stocks', {}).get(code)
+            
+            if isinstance(stock_info, dict):
+                return stock_info
+            elif isinstance(stock_info, str):
+                return {"name": stock_info, "market": "UNKNOWN"}
     except:
-        return code
+        pass
+    
+    return {"name": code, "market": "UNKNOWN"}
 
 def main():
     if len(sys.argv) < 2:
@@ -65,11 +72,21 @@ def main():
             if prev_price > 0:
                 change_percent = (current_price / prev_price - 1.0) * 100.0
         
-        # 통화 설정 (한국 종목은 KRW, 그 외는 USD로 가정)
-        if country == "KR" or (country == "AUTO" and code.isdigit()):
+        # 종목명과 마켓 정보 검색
+        stock_info = get_stock_name(code) if with_name else {}
+        market = stock_info.get("market") if isinstance(stock_info, dict) else "UNKNOWN"
+        
+        # 통화 설정 (시장 정보 우선 적용)
+        if market == "KRX":
             currency = "KRW"
-        else:
+        elif market in ["NASDAQ", "NYSE", "AMEX"]:
             currency = "USD"
+        else:
+            # 시장 정보를 모를 때는 기존 로직(파라미터 기반) 사용
+            if country == "KR" or (country == "AUTO" and code.isdigit()):
+                currency = "KRW"
+            else:
+                currency = "USD"
             
         result = {
             "code": code,
@@ -78,9 +95,10 @@ def main():
             "currency": currency
         }
         
-        # --with-name 파라미터가 있을 때만 종목명 검색 (속도 저하 방지)
+        # --with-name 파라미터가 있을 때만 결과에 포함
         if with_name:
-            result["name"] = get_stock_name(code)
+            result["name"] = stock_info.get("name") if isinstance(stock_info, dict) else code
+            result["market"] = market
         
         print(json.dumps(result, ensure_ascii=False))
         

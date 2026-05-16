@@ -20,7 +20,10 @@ def update_cache():
         krx_df = fdr.StockListing('KRX')
         if 'Code' in krx_df.columns and 'Name' in krx_df.columns:
             for _, row in krx_df.iterrows():
-                cache_data['stocks'][str(row['Code'])] = str(row['Name'])
+                cache_data['stocks'][str(row['Code'])] = {
+                    "name": str(row['Name']),
+                    "market": "KRX"
+                }
     except Exception as e:
         print(f"KRX 로드 에러: {e}")
 
@@ -30,7 +33,10 @@ def update_cache():
             mkt_df = fdr.StockListing(mkt)
             if 'Symbol' in mkt_df.columns and 'Name' in mkt_df.columns:
                 for _, row in mkt_df.iterrows():
-                    cache_data['stocks'][str(row['Symbol'])] = str(row['Name'])
+                    cache_data['stocks'][str(row['Symbol'])] = {
+                        "name": str(row['Name']),
+                        "market": mkt
+                    }
         except Exception as e:
             print(f"{mkt} 로드 에러: {e}")
 
