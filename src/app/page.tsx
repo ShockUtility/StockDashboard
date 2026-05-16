@@ -454,10 +454,11 @@ export default function Home() {
     try {
       await fetchExchangeRate();
 
-      // 모든 포트폴리오의 모든 주식 자산 수집
+      // 모든 포트폴리오의 모든 주식 자산 수집 (정렬 순서 반영)
       const allStockAssets: { pid: string, asset: Asset }[] = [];
       portfolios.forEach(p => {
-        p.assets.forEach(a => {
+        const sorted = getSortedAssets(p.assets, sortConfig);
+        sorted.forEach(a => {
           if (a.type === 'KR_STOCK' || a.type === 'US_STOCK') {
             allStockAssets.push({ pid: p.id, asset: a });
           }
@@ -956,20 +957,34 @@ export default function Home() {
                                 onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
                               />
                             ) : (
-                              <div style={{ opacity: refreshingStockIds.includes(asset.id) ? 0.5 : 1 }}>
+                              <div style={{ minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                                 {refreshingStockIds.includes(asset.id) ? (
-                                  <div className="shimmer" style={{ height: '20px', width: '60px' }}></div>
+                                  <div style={{ 
+                                    width: '16px', height: '16px', 
+                                    border: '2px solid rgba(59, 130, 246, 0.2)', 
+                                    borderTopColor: '#3b82f6', 
+                                    borderRadius: '50%', 
+                                    animation: 'spin 0.8s linear infinite' 
+                                  }}></div>
                                 ) : (
-                                  <>
-                                    <div className={(asset.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} onClick={() => asset.type === 'CUSTOM' && startEditAsset(asset)} style={{ cursor: asset.type === 'CUSTOM' ? 'pointer' : 'default' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', opacity: pendingStockIds.includes(asset.id) ? 0.4 : 1 }}>
+                                    <div 
+                                      className={pendingStockIds.includes(asset.id) ? '' : ((asset.changePercent || 0) >= 0 ? 'text-success' : 'text-danger')} 
+                                      onClick={() => asset.type === 'CUSTOM' && startEditAsset(asset)} 
+                                      style={{ 
+                                        cursor: asset.type === 'CUSTOM' ? 'pointer' : 'default', 
+                                        fontWeight: 600,
+                                        color: pendingStockIds.includes(asset.id) ? 'var(--text-secondary)' : undefined
+                                      }}
+                                    >
                                       {formatMoney(asset.currentPrice, asset.currency)}
                                     </div>
-                                    {asset.changePercent !== undefined && (
+                                    {asset.changePercent !== undefined && !pendingStockIds.includes(asset.id) && (
                                       <div className={(asset.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem' }}>
                                         {(asset.changePercent || 0) >= 0 ? '+' : ''}{(asset.changePercent || 0).toFixed(2)}%
                                       </div>
                                     )}
-                                  </>
+                                  </div>
                                 )}
                               </div>
                             )
@@ -1116,6 +1131,8 @@ export default function Home() {
             </div>
           </div>
 
+
+          
           {/* 중앙 핵심 지표 영역 (카드 스타일 - 반응형 적용) */}
           <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
 
@@ -1503,51 +1520,68 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '24px', fontSize: '1.5rem', textAlign: 'center' }}>자산 추가</h3>
 
-        {/* 타입 선택 탭 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '24px' }}>
-          <button
-            type="button"
-            onClick={() => handleTypeChange('KR_STOCK')}
-            style={{
-              padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)',
-              background: type === 'KR_STOCK' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.05)',
-              color: type === 'KR_STOCK' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem'
-            }}
-          >
-            🇰🇷 한국 주식
-          </button>
+        {/* 타입 선택 탭 스타일 UI */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '4px',
+          marginBottom: '24px',
+          background: 'rgba(0,0,0,0.2)',
+          padding: '4px',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}>
           <button
             type="button"
             onClick={() => handleTypeChange('US_STOCK')}
             style={{
-              padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)',
-              background: type === 'US_STOCK' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255,255,255,0.05)',
-              color: type === 'US_STOCK' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem'
+              padding: '10px 0', borderRadius: '8px', border: 'none',
+              background: type === 'US_STOCK' ? 'rgba(139, 92, 246, 0.3)' : 'transparent',
+              color: type === 'US_STOCK' ? '#fff' : 'var(--text-secondary)',
+              cursor: 'pointer', fontSize: '0.8rem', fontWeight: type === 'US_STOCK' ? 600 : 400,
+              transition: 'all 0.2s'
             }}
           >
-            🇺🇸 미국 주식
+            🇺🇸 미국
           </button>
           <button
             type="button"
-            onClick={() => handleTypeChange('CASH')}
+            onClick={() => handleTypeChange('KR_STOCK')}
             style={{
-              padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)',
-              background: type === 'CASH' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.05)',
-              color: type === 'CASH' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem'
+              padding: '10px 0', borderRadius: '8px', border: 'none',
+              background: type === 'KR_STOCK' ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+              color: type === 'KR_STOCK' ? '#fff' : 'var(--text-secondary)',
+              cursor: 'pointer', fontSize: '0.8rem', fontWeight: type === 'KR_STOCK' ? 600 : 400,
+              transition: 'all 0.2s'
             }}
           >
-            💵 예수금
+            🇰🇷 한국
           </button>
           <button
             type="button"
             onClick={() => handleTypeChange('CUSTOM')}
             style={{
-              padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)',
-              background: type === 'CUSTOM' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255,255,255,0.05)',
-              color: type === 'CUSTOM' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem'
+              padding: '10px 0', borderRadius: '8px', border: 'none',
+              background: type === 'CUSTOM' ? 'rgba(245, 158, 11, 0.3)' : 'transparent',
+              color: type === 'CUSTOM' ? '#fff' : 'var(--text-secondary)',
+              cursor: 'pointer', fontSize: '0.8rem', fontWeight: type === 'CUSTOM' ? 600 : 400,
+              transition: 'all 0.2s'
             }}
           >
-            🏅 커스텀 자산
+            🏅 커스텀
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTypeChange('CASH')}
+            style={{
+              padding: '10px 0', borderRadius: '8px', border: 'none',
+              background: type === 'CASH' ? 'rgba(16, 185, 129, 0.3)' : 'transparent',
+              color: type === 'CASH' ? '#fff' : 'var(--text-secondary)',
+              cursor: 'pointer', fontSize: '0.8rem', fontWeight: type === 'CASH' ? 600 : 400,
+              transition: 'all 0.2s'
+            }}
+          >
+            💵 예수금
           </button>
         </div>
 
@@ -1584,12 +1618,12 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
 
           <div className="input-group" style={{ marginBottom: 0, width: '100%', position: 'relative' }}>
             <label className="input-label">
-              {type === 'CASH' ? '항목명 (예: 신한은행 계좌)' : '종목 코드 또는 이름'}
+              {type === 'CASH' ? '이름' : '종목 코드 또는 이름'}
             </label>
             <input
               type="text"
               className="glass-input"
-              placeholder={type === 'KR_STOCK' ? "예: 005930 또는 삼성전자" : type === 'US_STOCK' ? "예: AAPL 또는 Apple" : type === 'CASH' ? "예: 일반계좌, 파킹통장 등" : "예: 금현물, 코인 등"}
+              placeholder={type === 'KR_STOCK' ? "예: 005930 또는 삼성전자" : type === 'US_STOCK' ? "예: AAPL 또는 Apple" : type === 'CASH' ? "예: 예수금, 현금, 달러 등" : "예: 금현물, 코인 등"}
               value={code}
               onChange={(e) => {
                 setCode(e.target.value);
@@ -1628,7 +1662,7 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
 
           {type !== 'CASH' && (
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">평균 단가 (또는 현재가)</label>
+              <label className="input-label">평균 단가</label>
               <input type="number" step="any" className="glass-input" value={avgPrice} onChange={(e) => setAvgPrice(e.target.value)} style={{ width: '100%' }} required />
             </div>
           )}
