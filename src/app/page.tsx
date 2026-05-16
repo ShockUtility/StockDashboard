@@ -1224,13 +1224,13 @@ export default function Home() {
     };
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', paddingBottom: '60px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '60px' }}>
 
         {/* 미국 주식 통합 섹션 */}
         <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
           <div style={{ borderBottom: collapsedUS ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
             <div className="flex-between">
-              {/* 왕쪽: 화살표 토글 + 에모지 + 제목 (콴림/펼치기) */}
+              {/* 왼쪽: 화살표 토글 + 제목 (접기/펼치기) */}
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }}
                 onClick={() => setCollapsedUS(prev => !prev)}
@@ -1320,7 +1320,7 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {aggregatedUSStocks.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.3)' }}>보유 중인 미국 주식이 없습니다.</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.3)' }}>보유 중인 미국 주식이 없습니다.</td></tr>
                   ) : (
                     aggregatedUSStocks.map((stock) => {
                       const stockInvest = stock.avgPrice * stock.quantity;
@@ -1332,15 +1332,12 @@ export default function Home() {
                         <tr key={stock.code} className="hover-dim">
                           <td>
                             <div
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                              style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
                               onClick={() => handleShowDetail(stock)}
                               className="clickable-stock-name"
                             >
-                              <span style={{ fontSize: '1.2rem' }}>🇺🇸</span>
-                              <div>
-                                <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
-                              </div>
+                              <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
                             </div>
                           </td>
                           <td>{stock.quantity.toLocaleString()}</td>
@@ -1368,7 +1365,7 @@ export default function Home() {
         <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
           <div style={{ borderBottom: collapsedKR ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
             <div className="flex-between">
-              {/* 왕쪽: 화살표 토글 + 에모지 + 제목 (콱림/펼치기) */}
+              {/* 왼쪽: 화살표 토글 + 제목 (접기/펼치기) */}
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }}
                 onClick={() => setCollapsedKR(prev => !prev)}
@@ -1415,7 +1412,7 @@ export default function Home() {
 
             {/* 통계 요약 바: 접힌 상태에서는 숨김 */}
             {!collapsedKR && (
-              <div style={{ display: 'flex', gap: '24px', marginTop: '24px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)' }}>
+              <div style={{ display: 'flex', gap: '24px', marginTop: '24px', marginBottom: '24px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)' }}>
                 <div style={{ flex: 1 }}>
                   <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>총 투자 원금</div>
                   <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{formatMoney(totalKRInvest, 'KRW')}</div>
@@ -1455,7 +1452,7 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {aggregatedKRStocks.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.3)' }}>보유 중인 한국 주식이 없습니다.</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.3)' }}>보유 중인 한국 주식이 없습니다.</td></tr>
                   ) : (
                     aggregatedKRStocks.map((stock) => {
                       const stockInvest = stock.avgPrice * stock.quantity;
@@ -1467,15 +1464,12 @@ export default function Home() {
                         <tr key={stock.code} className="hover-dim">
                           <td>
                             <div
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                              style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
                               onClick={() => handleShowDetail(stock)}
                               className="clickable-stock-name"
                             >
-                              <span style={{ fontSize: '1.2rem' }}>🇰🇷</span>
-                              <div>
-                                <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
-                              </div>
+                              <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
                             </div>
                           </td>
                           <td>{stock.quantity.toLocaleString()}</td>
@@ -1510,9 +1504,8 @@ export default function Home() {
           0% { left: -40%; }
           100% { left: 100%; }
         }
-        .clickable-stock-name:hover span:first-child {
-          text-decoration: underline;
-          color: var(--accent-primary);
+        .clickable-stock-name:hover strong {
+          color: #c4b5fd;
         }
       `}</style>
       {/* 헤더 섹션 */}
