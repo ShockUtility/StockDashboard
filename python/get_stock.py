@@ -3,25 +3,37 @@ import json
 import FinanceDataReader as fdr
 from datetime import datetime, timedelta
 
-def get_stock_name(code, country):
+import os
+import subprocess
+
+def get_stock_name(code):
+    cache_file = os.path.join(os.path.dirname(__file__), 'stock_names_cache.json')
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    need_update = True
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+            if cache_data.get('date') == today:
+                need_update = False
+        except:
+            pass
+
+    # 갱신이 필요하면 업데이트 스크립트를 동기적으로 실행합니다. (수 초 소요)
+    if need_update:
+        update_script = os.path.join(os.path.dirname(__file__), 'update_stock_names.py')
+        # 서버 환경에 따라 python 경로가 다를 수 있어 sys.executable을 사용하거나 python3을 호출합니다.
+        python_exe = sys.executable or 'python3'
+        subprocess.run([python_exe, update_script], capture_output=True)
+        
+    # 캐시 파일에서 이름 읽기
     try:
-        if country == "KR" or (country == "AUTO" and code.isdigit()):
-            df = fdr.StockListing('KRX')
-            if 'Code' in df.columns:
-                name = df[df['Code'] == code]['Name'].values
-                if len(name) > 0:
-                    return name[0]
-        else:
-            # 미국 주식 검색
-            for mkt in ['NASDAQ', 'NYSE', 'AMEX']:
-                df = fdr.StockListing(mkt)
-                if 'Symbol' in df.columns:
-                    name = df[df['Symbol'] == code]['Name'].values
-                    if len(name) > 0:
-                        return name[0]
-    except Exception as e:
-        pass
-    return code
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            cache_data = json.load(f)
+            return cache_data.get('stocks', {}).get(code, code)
+    except:
+        return code
 
 def main():
     if len(sys.argv) < 2:
@@ -68,7 +80,7 @@ def main():
         
         # --with-name 파라미터가 있을 때만 종목명 검색 (속도 저하 방지)
         if with_name:
-            result["name"] = get_stock_name(code, country)
+            result["name"] = get_stock_name(code)
         
         print(json.dumps(result, ensure_ascii=False))
         
