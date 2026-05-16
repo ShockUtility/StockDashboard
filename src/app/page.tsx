@@ -59,6 +59,8 @@ interface AddStockModalProps {
   type: 'KR' | 'US';
   code: string;
   setCode: (val: string) => void;
+  actualCode: string;
+  setActualCode: (val: string) => void;
   avgPrice: string;
   setAvgPrice: (val: string) => void;
   quantity: string;
@@ -126,7 +128,8 @@ export default function Home() {
   const [sortConfigGOLD, setSortConfigGOLD] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
 
   // 폼 입력 상태
-  const [code, setCode] = useState(''); // 종목 코드
+  const [code, setCode] = useState(''); // 종목 코드 또는 이름 (표시용)
+  const [actualCode, setActualCode] = useState(''); // 실제 종목 코드 (전송용)
   const [avgPrice, setAvgPrice] = useState(''); // 매수 단가
   const [quantity, setQuantity] = useState(''); // 수량
   const [errorMsg, setErrorMsg] = useState(''); // 에러 메시지
@@ -225,10 +228,19 @@ export default function Home() {
       return;
     }
 
+    // 전송할 실제 코드를 결정합니다. (자동완성 선택값이 있으면 그것을, 없으면 입력된 값을 사용)
+    const finalCode = actualCode || code.trim();
+
+    // 종목 코드가 영문자, 숫자, 마침표(.)로만 이루어졌는지 확인 (직접 입력 시에만 체크)
+    if (!actualCode && !/^[A-Za-z0-9.]+$/.test(finalCode)) {
+      setErrorMsg('정확한 종목 코드를 입력하거나 검색 목록에서 선택해 주세요.');
+      return;
+    }
+
     setLoading(true);
     try {
       // 서버 API를 호출하여 종목 정보를 가져옵니다.
-      const res = await fetch(`/api/stock?code=${encodeURIComponent(code)}&country=${addModalType}&withName=true`);
+      const res = await fetch(`/api/stock?code=${encodeURIComponent(finalCode)}&country=${addModalType}&withName=true`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '항목 정보를 불러오지 못했습니다.');
 
@@ -1019,6 +1031,8 @@ export default function Home() {
         loading={loading}
         errorMsg={errorMsg}
         onSubmit={handleAddStock}
+        actualCode={actualCode}
+        setActualCode={setActualCode}
       />
 
       {/* 개별 종목 상세 모달 */}
@@ -1170,29 +1184,117 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
   );
 };
 
-const AddStockModal = ({ isOpen, onClose, type, code, setCode, avgPrice, setAvgPrice, quantity, setQuantity, loading, errorMsg, onSubmit }: AddStockModalProps) => {
+const AddStockModal = ({ isOpen, onClose, type, code, setCode, actualCode, setActualCode, avgPrice, setAvgPrice, quantity, setQuantity, loading, errorMsg, onSubmit }: AddStockModalProps) => {
+  const [searchResults, setSearchResults] = useState<{code: string, name: string, market: string}[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchResults([]);
+      setShowDropdown(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    // 입력창이 비어있으면 초기화
+    if (!code || code.length < 1) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setActualCode(''); // 선택된 코드도 초기화
+      return;
+    }
+    
+    // 이미 목록에서 선택된 상태(이름이 입력창에 있고 실제 코드가 저장됨)라면 검색을 스킵
+    if (showDropdown === false && actualCode !== '' && code.length > 0) return;
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/search-stock?q=${encodeURIComponent(code)}&country=${type}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+          setShowDropdown(true);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [code, type]);
+
+  const handleSelectStock = (item: {code: string, name: string}) => {
+    setCode(item.name); // 화면에는 이름 표시
+    setActualCode(item.code); // 실제 전송용 코드 저장
+    setShowDropdown(false);
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95%', maxWidth: '450px', padding: '32px' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95%', maxWidth: '450px', padding: '32px', overflow: 'visible' }}>
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '24px', fontSize: '1.5rem', textAlign: 'center' }}>
           {type === 'KR' ? '🇰🇷 한국 주식 추가' : '🇺🇸 미국 주식 추가'}
         </h3>
         
         <form onSubmit={onSubmit} className="flex-col" style={{ gap: '20px', width: '100%' }}>
-          <div className="input-group" style={{ marginBottom: 0, width: '100%' }}>
-            <label className="input-label">종목 코드 (예: 005930, AAPL)</label>
+          <div className="input-group" style={{ marginBottom: 0, width: '100%', position: 'relative' }}>
+            <label className="input-label">종목 코드 또는 이름 (예: 005930, 애플)</label>
             <input 
               type="text" 
               className="glass-input" 
-              placeholder={type === 'KR' ? "예: 005930" : "예: AAPL"} 
+              placeholder={type === 'KR' ? "예: 005930 또는 삼성전자" : "예: AAPL 또는 Apple"} 
               value={code} 
-              onChange={(e) => setCode(e.target.value)} 
+              onChange={(e) => {
+                setCode(e.target.value);
+                setShowDropdown(true);
+              }} 
               style={{ width: '100%', boxSizing: 'border-box' }}
               autoFocus
+              autoComplete="off"
             />
+            {showDropdown && code && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                background: 'rgba(20, 20, 30, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                marginTop: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                zIndex: 9999,
+                boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+              }}>
+                {isSearching ? (
+                  <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>검색 중...</div>
+                ) : searchResults.length > 0 ? (
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                    {searchResults.map(item => (
+                      <li 
+                        key={item.code}
+                        onClick={() => handleSelectStock(item)}
+                        style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)' }}>{item.market}</span>
+                          <span style={{ fontSize: '0.85rem', color: '#a78bfa' }}>{item.code}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>검색 결과가 없습니다.</div>
+                )}
+              </div>
+            )}
           </div>
           
           <div style={{ display: 'flex', gap: '16px', width: '100%' }}>
