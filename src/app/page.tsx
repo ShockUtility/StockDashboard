@@ -47,9 +47,9 @@ interface SortConfig {
 interface PieModalProps {
   isOpen: boolean;
   onClose: () => void;
-  portfolio: Portfolio | null;
+  title: string;
+  data: { name: string, value: number }[];
   formatMoney: (val: number, cur: string) => string;
-  exchangeRate: number;
 }
 
 interface ExchangeRateModalProps {
@@ -92,6 +92,7 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false); // [신규] 클라이언트 사이드 마운트 확인용
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]); // 다중 포트폴리오 리스트
   const [currentPortfolioId, setCurrentPortfolioId] = useState<string>(''); // 현재 선택된 포트폴리오 ID
+  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET'>('MANAGE'); // [신규] 메인 탭 상태
 
   const [loading, setLoading] = useState(false); // 데이터 로딩 상태
   const [refreshProgress, setRefreshProgress] = useState<number>(0); // 전체 업데이트 진행률
@@ -108,6 +109,8 @@ export default function Home() {
 
   // 모달 노출 여부
   const [showPieModal, setShowPieModal] = useState(false);
+  const [pieModalTitle, setPieModalTitle] = useState("");
+  const [pieModalData, setPieModalData] = useState<{ name: string, value: number }[]>([]);
   const [showManageModal, setShowManageModal] = useState(false);
   const [showMoveSub, setShowMoveSub] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
@@ -129,6 +132,10 @@ export default function Home() {
 
   // 정렬 상태
   const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
+  const [assetSortConfig, setAssetSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' }); // [신규] 자산별 현황 전용 정렬
+  // 자산별 현황 섹션 접기/펼치기 상태
+  const [collapsedUS, setCollapsedUS] = useState(false); // 미국 주식 섹션 접기 여부
+  const [collapsedKR, setCollapsedKR] = useState(false); // 한국 주식 섹션 접기 여부
 
   // 폼 입력 상태
   const [code, setCode] = useState('');
@@ -854,6 +861,15 @@ export default function Home() {
                 color: '#fff'
               }}
               onClick={() => {
+                // 해당 포트폴리오의 자산을 파이 차트 데이터로 변환 (CASH 포함)
+                const pData = portfolio.assets
+                  .filter(a => a.currentPrice * a.quantity > 0)
+                  .map(a => ({
+                    name: a.name,
+                    value: (a.currentPrice * a.quantity) * (a.currency === 'USD' ? exchangeRate : 1)
+                  }));
+                setPieModalTitle(`📊 ${portfolio.name} 비중 현황`);
+                setPieModalData(pData);
                 setCurrentPortfolioId(portfolio.id);
                 setShowPieModal(true);
               }}
@@ -1143,6 +1159,349 @@ export default function Home() {
     );
   };
 
+  // --- 자산별 현황 탭 렌더링 함수 ---
+  const renderAssetStatus = () => {
+    // 1. 자산 통합 데이터 계산 (미국/한국 주식)
+    const usStocks: { [code: string]: Asset & { totalInvestment: number; totalCurrent: number } } = {};
+    const krStocks: { [code: string]: Asset & { totalInvestment: number; totalCurrent: number } } = {};
+
+    portfolios.forEach(p => {
+      p.assets.forEach(a => {
+        const invest = a.avgPrice * a.quantity;
+        const current = a.currentPrice * a.quantity;
+
+        if (a.type === 'US_STOCK') {
+          if (!usStocks[a.code]) {
+            usStocks[a.code] = { ...a, totalInvestment: invest, totalCurrent: current };
+          } else {
+            const existing = usStocks[a.code];
+            existing.quantity += a.quantity;
+            existing.totalInvestment += invest;
+            existing.totalCurrent += current;
+            existing.avgPrice = existing.totalInvestment / existing.quantity;
+          }
+        } else if (a.type === 'KR_STOCK') {
+          if (!krStocks[a.code]) {
+            krStocks[a.code] = { ...a, totalInvestment: invest, totalCurrent: current };
+          } else {
+            const existing = krStocks[a.code];
+            existing.quantity += a.quantity;
+            existing.totalInvestment += invest;
+            existing.totalCurrent += current;
+            existing.avgPrice = existing.totalInvestment / existing.quantity;
+          }
+        }
+      });
+    });
+
+    // 2. 정렬 적용
+    const aggregatedUSStocks = getSortedAssets(Object.values(usStocks), assetSortConfig);
+    const aggregatedKRStocks = getSortedAssets(Object.values(krStocks), assetSortConfig);
+
+    // 미국 주식 요약 지표
+    const totalUSInvest = aggregatedUSStocks.reduce((sum, s) => sum + (s.avgPrice * s.quantity), 0);
+    const totalUSCurrent = aggregatedUSStocks.reduce((sum, s) => sum + (s.currentPrice * s.quantity), 0);
+    const totalUSReturn = totalUSCurrent - totalUSInvest;
+    const totalUSReturnPercent = totalUSInvest > 0 ? (totalUSReturn / totalUSInvest * 100) : 0;
+
+    // 한국 주식 요약 지표
+    const totalKRInvest = aggregatedKRStocks.reduce((sum, s) => sum + (s.avgPrice * s.quantity), 0);
+    const totalKRCurrent = aggregatedKRStocks.reduce((sum, s) => sum + (s.currentPrice * s.quantity), 0);
+    const totalKRReturn = totalKRCurrent - totalKRInvest;
+    const totalKRReturnPercent = totalKRInvest > 0 ? (totalKRReturn / totalKRInvest * 100) : 0;
+
+    // 정렬 핸들러
+    const handleAssetSort = (key: SortKey) => {
+      let direction: SortDirection = 'asc';
+      if (assetSortConfig && assetSortConfig.key === key && assetSortConfig.direction === 'asc') direction = 'desc';
+      setAssetSortConfig({ key, direction });
+    };
+
+    // 정렬 아이콘
+    const AssetSortIcon = ({ columnKey }: { columnKey: SortKey }) => {
+      if (!assetSortConfig || assetSortConfig.key !== columnKey) return <span style={{ opacity: 0.3, marginLeft: '4px', fontSize: '0.7em' }}>↕</span>;
+      return <span style={{ marginLeft: '4px', fontSize: '0.8em', color: 'var(--text-primary)' }}>{assetSortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
+    };
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', paddingBottom: '60px' }}>
+
+        {/* 미국 주식 통합 섹션 */}
+        <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
+          <div style={{ borderBottom: collapsedUS ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex-between">
+              {/* 왕쪽: 화살표 토글 + 에모지 + 제목 (콴림/펼치기) */}
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }}
+                onClick={() => setCollapsedUS(prev => !prev)}
+              >
+                <span style={{ fontSize: '1.2rem', transform: collapsedUS ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', display: 'inline-block' }}>▼</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>🇺🇸 미국 주식 통합 현황</h2>
+                </div>
+              </div>
+              {/* 오른쪽: 총 평가액 배지 + 파이 차트 버튼 (계좌관리 헤더와 동일한 stat-badge 스타일) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* 총 평가액 배지 */}
+                <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                  <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}>총 평가액:</span>
+                  <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {formatMoney(totalUSCurrent, 'USD')}
+                  </strong>
+                  <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
+                    ≈ {formatMoney(totalUSCurrent * exchangeRate, 'KRW')}
+                  </span>
+                </div>
+                {/* 파이 차트 버튼: 미국 주식 비중 모달 열기 */}
+                <button
+                  className="glass-button"
+                  style={{
+                    width: '40px', height: '40px', padding: 0, borderRadius: '10px',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)',
+                    color: '#fff', flexShrink: 0
+                  }}
+                  onClick={() => {
+                    // 미국 주식 목록을 파이 차트 데이터 형식으로 변환
+                    const usPieData = aggregatedUSStocks.map(s => ({
+                      name: s.name,
+                      value: s.currentPrice * s.quantity
+                    }));
+                    setPieModalTitle('🇺🇸 미국 주식 비중 현황');
+                    setPieModalData(usPieData);
+                    setShowPieModal(true);
+                  }}
+                  title="미국 주식 비중 차트 보기"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* 통계 요약 바: 접힌 상태에서는 숨김 */}
+            {!collapsedUS && (
+              <div style={{ display: 'flex', gap: '24px', marginTop: '24px', marginBottom: '24px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                <div style={{ flex: 1 }}>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>총 투자 원금</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{formatMoney(totalUSInvest, 'USD')}</div>
+                </div>
+                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '24px' }}>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>총 수익 현황</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 600 }} className={totalUSReturn >= 0 ? 'text-success' : 'text-danger'}>
+                    {totalUSReturn >= 0 ? '+' : ''}{formatMoney(totalUSReturn, 'USD')}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '2px' }} className={totalUSReturnPercent >= 0 ? 'text-success' : 'text-danger'}>
+                    {totalUSReturnPercent >= 0 ? '▲' : '▼'} {totalUSReturnPercent.toFixed(2)}%
+                  </div>
+                </div>
+                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '24px' }}>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>보유 종목 수</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{aggregatedUSStocks.length}개 종목</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 테이블: 접힌 상태에서는 숨김 */}
+          {!collapsedUS && (
+            <div className="glass-table-container">
+              <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleAssetSort('name')}>종목명 / 티커 <AssetSortIcon columnKey="name" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>보유 수량 <AssetSortIcon columnKey="quantity" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>가중 평균단가 <AssetSortIcon columnKey="avgPrice" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 <AssetSortIcon columnKey="currentPrice" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (USD) <AssetSortIcon columnKey="investment" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (USD) <AssetSortIcon columnKey="current" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익률 <AssetSortIcon columnKey="returnPercent" /></th>
+                    <th>비중</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregatedUSStocks.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.3)' }}>보유 중인 미국 주식이 없습니다.</td></tr>
+                  ) : (
+                    aggregatedUSStocks.map((stock) => {
+                      const stockInvest = stock.avgPrice * stock.quantity;
+                      const stockCurrent = stock.currentPrice * stock.quantity;
+                      const retAmount = stockCurrent - stockInvest;
+                      const retPercent = stockInvest > 0 ? (retAmount / stockInvest * 100) : 0;
+                      const weight = totalUSCurrent > 0 ? (stockCurrent / totalUSCurrent * 100) : 0;
+                      return (
+                        <tr key={stock.code} className="hover-dim">
+                          <td>
+                            <div
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                              onClick={() => handleShowDetail(stock)}
+                              className="clickable-stock-name"
+                            >
+                              <span style={{ fontSize: '1.2rem' }}>🇺🇸</span>
+                              <div>
+                                <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{stock.quantity.toLocaleString()}</td>
+                          <td>{formatMoney(stock.avgPrice, 'USD')}</td>
+                          <td className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}>
+                            {formatMoney(stock.currentPrice, 'USD')}
+                          </td>
+                          <td>{formatMoney(stockInvest, 'USD')}</td>
+                          <td style={{ fontWeight: 600 }}>{formatMoney(stockCurrent, 'USD')}</td>
+                          <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>
+                            {retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%
+                          </td>
+                          <td>{weight.toFixed(1)}%</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* 한국 주식 통합 섹션 */}
+        <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
+          <div style={{ borderBottom: collapsedKR ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex-between">
+              {/* 왕쪽: 화살표 토글 + 에모지 + 제목 (콱림/펼치기) */}
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }}
+                onClick={() => setCollapsedKR(prev => !prev)}
+              >
+                <span style={{ fontSize: '1.2rem', transform: collapsedKR ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', display: 'inline-block' }}>▼</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>🇰🇷 한국 주식 통합 현황</h2>
+                </div>
+              </div>
+              {/* 오른쪽: 총 평가액 배지 + 파이 차트 버튼 (계좌관리 헤더와 동일한 stat-badge 스타일) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* 총 평가액 배지 */}
+                <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                  <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}>총 평가액:</span>
+                  <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {formatMoney(totalKRCurrent, 'KRW')}
+                  </strong>
+                </div>
+                {/* 파이 차트 버튼: 한국 주식 비중 모달 열기 */}
+                <button
+                  className="glass-button"
+                  style={{
+                    width: '40px', height: '40px', padding: 0, borderRadius: '10px',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)',
+                    color: '#fff', flexShrink: 0
+                  }}
+                  onClick={() => {
+                    // 한국 주식 목록을 파이 차트 데이터 형식으로 변환
+                    const krPieData = aggregatedKRStocks.map(s => ({
+                      name: s.name,
+                      value: s.currentPrice * s.quantity
+                    }));
+                    setPieModalTitle('🇰🇷 한국 주식 비중 현황');
+                    setPieModalData(krPieData);
+                    setShowPieModal(true);
+                  }}
+                  title="한국 주식 비중 차트 보기"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* 통계 요약 바: 접힌 상태에서는 숨김 */}
+            {!collapsedKR && (
+              <div style={{ display: 'flex', gap: '24px', marginTop: '24px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                <div style={{ flex: 1 }}>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>총 투자 원금</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{formatMoney(totalKRInvest, 'KRW')}</div>
+                </div>
+                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '24px' }}>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>총 수익 현황</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 600 }} className={totalKRReturn >= 0 ? 'text-success' : 'text-danger'}>
+                    {totalKRReturn >= 0 ? '+' : ''}{formatMoney(totalKRReturn, 'KRW')}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '2px' }} className={totalKRReturnPercent >= 0 ? 'text-success' : 'text-danger'}>
+                    {totalKRReturnPercent >= 0 ? '▲' : '▼'} {totalKRReturnPercent.toFixed(2)}%
+                  </div>
+                </div>
+                <div style={{ flex: 1, borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '24px' }}>
+                  <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>보유 종목 수</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>{aggregatedKRStocks.length}개 종목</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 테이블: 접힌 상태에서는 숨김 */}
+          {!collapsedKR && (
+            <div className="glass-table-container">
+              <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleAssetSort('name')}>종목명 / 코드 <AssetSortIcon columnKey="name" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>보유 수량 <AssetSortIcon columnKey="quantity" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>가중 평균단가 <AssetSortIcon columnKey="avgPrice" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 <AssetSortIcon columnKey="currentPrice" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (KRW) <AssetSortIcon columnKey="investment" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (KRW) <AssetSortIcon columnKey="current" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익률 <AssetSortIcon columnKey="returnPercent" /></th>
+                    <th>비중</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregatedKRStocks.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.3)' }}>보유 중인 한국 주식이 없습니다.</td></tr>
+                  ) : (
+                    aggregatedKRStocks.map((stock) => {
+                      const stockInvest = stock.avgPrice * stock.quantity;
+                      const stockCurrent = stock.currentPrice * stock.quantity;
+                      const retAmount = stockCurrent - stockInvest;
+                      const retPercent = stockInvest > 0 ? (retAmount / stockInvest * 100) : 0;
+                      const weight = totalKRCurrent > 0 ? (stockCurrent / totalKRCurrent * 100) : 0;
+                      return (
+                        <tr key={stock.code} className="hover-dim">
+                          <td>
+                            <div
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                              onClick={() => handleShowDetail(stock)}
+                              className="clickable-stock-name"
+                            >
+                              <span style={{ fontSize: '1.2rem' }}>🇰🇷</span>
+                              <div>
+                                <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{stock.quantity.toLocaleString()}</td>
+                          <td>{formatMoney(stock.avgPrice, 'KRW')}</td>
+                          <td className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}>
+                            {formatMoney(stock.currentPrice, 'KRW')}
+                          </td>
+                          <td>{formatMoney(stockInvest, 'KRW')}</td>
+                          <td style={{ fontWeight: 600 }}>{formatMoney(stockCurrent, 'KRW')}</td>
+                          <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>
+                            {retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%
+                          </td>
+                          <td>{weight.toFixed(1)}%</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  };
+
   return (
     <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto' }}>
       <style>{`
@@ -1150,6 +1509,10 @@ export default function Home() {
         @keyframes loading-slide {
           0% { left: -40%; }
           100% { left: 100%; }
+        }
+        .clickable-stock-name:hover span:first-child {
+          text-decoration: underline;
+          color: var(--accent-primary);
         }
       `}</style>
       {/* 헤더 섹션 */}
@@ -1334,27 +1697,98 @@ export default function Home() {
 
       </div>
 
-      {/* 포트폴리오 목록 렌더링 */}
-      {portfolios.map(p => renderPortfolio(p))}
-
-      {/* 포트폴리오 추가 버튼 */}
-      <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
-        <button
-          className="glass-button"
-          style={{ padding: '16px 32px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', background: 'rgba(59, 130, 246, 0.3)' }}
-          onClick={handleAddPortfolio}
-        >
-          <span style={{ fontSize: '1.5rem' }}>+</span> 새 포트폴리오 추가
-        </button>
+      {/* 메인 탭 네비게이션 바 */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '12px',
+        marginTop: '40px',
+        marginBottom: '32px',
+        position: 'sticky',
+        top: '20px',
+        zIndex: 100
+      }}>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(10px)',
+          padding: '6px',
+          borderRadius: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          gap: '4px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+        }}>
+          <button
+            onClick={() => setActiveMainTab('MANAGE')}
+            style={{
+              padding: '10px 24px',
+              borderRadius: '16px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              background: activeMainTab === 'MANAGE' ? 'rgba(59, 130, 246, 0.8)' : 'transparent',
+              color: activeMainTab === 'MANAGE' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeMainTab === 'MANAGE' ? '0 4px 15px rgba(59, 130, 246, 0.3)' : 'none'
+            }}
+          >
+            <span>📂</span> 계좌 관리
+          </button>
+          <button
+            onClick={() => setActiveMainTab('ASSET')}
+            style={{
+              padding: '10px 24px',
+              borderRadius: '16px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              background: activeMainTab === 'ASSET' ? 'rgba(139, 92, 246, 0.8)' : 'transparent',
+              color: activeMainTab === 'ASSET' ? '#fff' : 'rgba(255, 255, 255, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: activeMainTab === 'ASSET' ? '0 4px 15px rgba(139, 92, 246, 0.3)' : 'none'
+            }}
+          >
+            <span>📊</span> 자산별 현황
+          </button>
+        </div>
       </div>
 
+      {activeMainTab === 'MANAGE' ? (
+        <>
+          {/* 포트폴리오 목록 렌더링 */}
+          {portfolios.map(p => renderPortfolio(p))}
+
+          {/* 포트폴리오 추가 버튼 */}
+          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              className="glass-button"
+              style={{ padding: '16px 32px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', background: 'rgba(59, 130, 246, 0.3)' }}
+              onClick={handleAddPortfolio}
+            >
+              <span style={{ fontSize: '1.5rem' }}>+</span> 새 포트폴리오 추가
+            </button>
+          </div>
+        </>
+      ) : (
+        renderAssetStatus()
+      )}
+
       {/* 각종 모달들 (독립된 컴포넌트로 호출) */}
+      {/* 파이 차트 모달: title/data 상태를 직접 전달 */}
       <PieModal
         isOpen={showPieModal}
         onClose={() => setShowPieModal(false)}
-        portfolio={portfolios.find(p => p.id === currentPortfolioId) || null}
+        title={pieModalTitle}
+        data={pieModalData}
         formatMoney={formatMoney}
-        exchangeRate={exchangeRate}
       />
 
       <ExchangeRateModal
@@ -1483,32 +1917,24 @@ export default function Home() {
 }
 
 // --- 독립된 모달 컴포넌트 정의 (재렌더링 효율성을 위해 Home 외부에 정의) ---
-const PieModal = ({ isOpen, onClose, portfolio, formatMoney, exchangeRate }: PieModalProps) => {
-  if (!isOpen || !portfolio) return null;
+const PieModal = ({ isOpen, onClose, title, data, formatMoney }: PieModalProps) => {
+  if (!isOpen) return null;
 
-  const data = portfolio.assets.map(asset => {
-    const rate = asset.currency === 'USD' ? exchangeRate : 1;
-    return {
-      name: asset.name,
-      value: asset.currentPrice * asset.quantity * rate
-    };
-  });
-
-  data.sort((a, b) => b.value - a.value);
-  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
+  const total = sortedData.reduce((sum, entry) => sum + entry.value, 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '550px', height: '650px', display: 'flex', flexDirection: 'column' }}>
         <button className="modal-close" onClick={onClose}>×</button>
         <h3 style={{ marginBottom: '16px', textAlign: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
-          📊 {portfolio.name} 비중 분석
+          📊 {title}
         </h3>
         <div style={{ width: '100%', height: '300px', flexShrink: 0 }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
-              <Pie data={data} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
-                {data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+              <Pie data={sortedData} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
+                {sortedData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
               <Tooltip formatter={(value: any) => formatMoney(Number(value), 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
             </PieChart>
@@ -1516,7 +1942,7 @@ const PieModal = ({ isOpen, onClose, portfolio, formatMoney, exchangeRate }: Pie
         </div>
         <div style={{ flex: 1, overflowY: 'auto', marginTop: '16px', paddingRight: '8px' }}>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {data.map((entry, index) => {
+            {sortedData.map((entry, index) => {
               const percent = total > 0 ? (entry.value / total) * 100 : 0;
               return (
                 <li key={`item-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0px', fontSize: '0.8rem', padding: '2px 4px' }}>
