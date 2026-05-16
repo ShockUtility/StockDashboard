@@ -89,8 +89,8 @@ export default function Home() {
   const [editingCashGOLD, setEditingCashGOLD] = useState(false);
   const [loading, setLoading] = useState(false); // 데이터 로딩 상태
   const [refreshProgress, setRefreshProgress] = useState<number>(0); // 전체 업데이트 진행률
-  const [refreshIndex, setRefreshIndex] = useState<number>(0); // 현재 업데이트 중인 종목 순서
-  const [refreshingStockId, setRefreshingStockId] = useState<string | null>(null); // 현재 업데이트 중인 종목 ID
+  const [refreshIndex, setRefreshIndex] = useState<number>(0); // 현재 업데이트 완료된 종목 건수
+  const [refreshingStockIds, setRefreshingStockIds] = useState<string[]>([]); // 현재 업데이트 중인 종목 ID 목록 (병렬 대응)
   const [pendingStockIds, setPendingStockIds] = useState<string[]>([]); // 대기 중인 종목 ID 목록
 
   // 섹션 접기/펼치기 상태
@@ -309,70 +309,76 @@ export default function Home() {
     });
   };
 
-  // 전체 시세 업데이트 (단일 종목 순차적 조회)
+  // 전체 시세 업데이트 (한국/미국 그룹별 병렬 순차 조회)
   const handleRefreshPrices = async () => {
     setLoading(true);
     setRefreshProgress(0);
+    setRefreshIndex(0);
     
     try {
       await fetchExchangeRate();
       
-      // 1. 미국 주식과 한국 주식을 필터링하고 현재 화면의 정렬 상태에 맞게 정렬
+      // 1. 미국 주식과 한국 주식을 분리하여 정렬
       const usItems = getSortedPortfolio(portfolio.filter(item => item.currency === 'USD'), sortConfigUSD);
       const krItems = getSortedPortfolio(portfolio.filter(item => item.currency === 'KRW'), sortConfigKRW);
       
-      // 미국 주식 -> 한국 주식 순서로 결합
-      const targetItems = [...usItems, ...krItems];
-        
-      if (targetItems.length === 0) {
-        // 주식 종목이 없으면 바로 종료
+      const totalCount = usItems.length + krItems.length;
+      if (totalCount === 0) {
         setLoading(false);
         return;
       }
       
-      const totalCount = targetItems.length;
-      const targetIds = targetItems.map(item => item.id);
-      
-      // 초기 대기열 설정
-      setPendingStockIds(targetIds);
-      
-      // 2. 하나씩 순차적으로 업데이트 진행
-      for (let i = 0; i < totalCount; i++) {
-        const item = targetItems[i];
-        
-        // 현재 처리 중인 종목 표기 및 대기열에서 제거
-        setRefreshIndex(i + 1);
-        setRefreshingStockId(item.id);
-        setPendingStockIds(prev => prev.filter(id => id !== item.id));
-        
-        const countryParam = item.currency === 'USD' ? 'US' : 'KR';
-        
-        try {
-          const res = await fetch(`/api/stock?code=${encodeURIComponent(item.code)}&country=${countryParam}`);
-          if (res.ok) {
-            const data = await res.json();
-            // 포트폴리오 상태 즉시 갱신
-            setPortfolio(prevPortfolio => prevPortfolio.map(pItem => {
-              if (pItem.id === item.id) {
-                return { ...pItem, currentPrice: data.currentPrice, changePercent: data.changePercent };
-              }
-              return pItem;
-            }));
+      // 초기 대기열 설정 (합쳐서 관리)
+      setPendingStockIds([...usItems, ...krItems].map(item => item.id));
+
+      // 각 그룹별로 순차 업데이트를 수행하는 내부 함수
+      const updateGroup = async (groupItems: StockItem[]) => {
+        for (const item of groupItems) {
+          // 현재 처리 중인 종목 추가 및 대기열 제거
+          setRefreshingStockIds(prev => [...prev, item.id]);
+          setPendingStockIds(prev => prev.filter(id => id !== item.id));
+          
+          const countryParam = item.currency === 'USD' ? 'US' : 'KR';
+          
+          try {
+            const res = await fetch(`/api/stock?code=${encodeURIComponent(item.code)}&country=${countryParam}`);
+            if (res.ok) {
+              const data = await res.json();
+              // 포트폴리오 상태 즉시 갱신
+              setPortfolio(prevPortfolio => prevPortfolio.map(pItem => {
+                if (pItem.id === item.id) {
+                  return { ...pItem, currentPrice: data.currentPrice, changePercent: data.changePercent };
+                }
+                return pItem;
+              }));
+            }
+          } catch (err) {
+            console.error(`[${item.code}] 업데이트 실패:`, err);
+          } finally {
+            // 완료 후 현재 처리 목록에서 제거 및 완료 건수 증가
+            setRefreshingStockIds(prev => prev.filter(id => id !== item.id));
+            setRefreshIndex(prev => {
+              const nextCount = prev + 1;
+              setRefreshProgress(Math.round((nextCount / totalCount) * 100));
+              return nextCount;
+            });
           }
-        } catch (err) {
-          console.error(`[${item.code}] 업데이트 실패:`, err);
         }
-        
-        // 진행률 갱신
-        setRefreshProgress(Math.round(((i + 1) / totalCount) * 100));
-      }
+      };
+
+      // 2. 한국 그룹과 미국 그룹을 동시에(병렬로) 시작
+      // 각 그룹 내부에서는 순차적으로 진행됨
+      await Promise.all([
+        updateGroup(usItems),
+        updateGroup(krItems)
+      ]);
       
     } catch (error) {
       console.error("업데이트 실패:", error);
       alert('시세 새로고침 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
-      setRefreshingStockId(null);
+      setRefreshingStockIds([]);
       setPendingStockIds([]);
       setRefreshProgress(0);
       setRefreshIndex(0);
@@ -692,7 +698,7 @@ export default function Home() {
                               style={{ cursor: item.currency === 'GOLD' ? 'pointer' : 'default', opacity: pendingStockIds.includes(item.id) ? 0.5 : 1 }}
                             >
                               {/* [수정] 텍스트 제거 및 흰색 프로그레스 바 표시 */}
-                              {refreshingStockId === item.id ? (
+                              {refreshingStockIds.includes(item.id) ? (
                                 <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
                                     <div style={{ 
