@@ -74,6 +74,9 @@ interface AddStockModalProps {
   setQuantity: (val: string) => void;
   loading: boolean;
   errorMsg: string;
+  setErrorMsg: (val: string) => void;
+  currency: 'KRW' | 'USD';
+  setCurrency: (val: 'KRW' | 'USD') => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -105,6 +108,10 @@ export default function Home() {
 
   // 모달 노출 여부
   const [showPieModal, setShowPieModal] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [showMoveSub, setShowMoveSub] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [managingAssetInfo, setManagingAssetInfo] = useState<{ fromPid: string, asset: Asset } | null>(null);
   const [showExchangeModal, setShowExchangeModal] = useState(false);
 
   // 항목 추가 모달 상태
@@ -117,6 +124,7 @@ export default function Home() {
 
   // 자산 인라인 편집 상태
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
   const [editAssetData, setEditAssetData] = useState<{ name: string, quantity: string, avgPrice: string, currentPrice: string }>({ name: '', quantity: '', avgPrice: '', currentPrice: '' });
 
   // 정렬 상태
@@ -127,6 +135,7 @@ export default function Home() {
   const [actualCode, setActualCode] = useState('');
   const [avgPrice, setAvgPrice] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [currency, setCurrency] = useState<'KRW' | 'USD'>('KRW');
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -335,15 +344,16 @@ export default function Home() {
       let newItem: Asset;
 
       if (addModalType === 'CASH') {
+        const cashAmount = parseFloat(avgPrice);
         newItem = {
           id: Date.now().toString(),
           type: 'CASH',
-          name: code || (actualCode === 'USD' ? '현금 (USD)' : '현금 (KRW)'),
+          name: code || (currency === 'USD' ? '현금 (USD)' : '현금 (KRW)'),
           code: 'CASH',
-          quantity: parseFloat(quantity),
-          avgPrice: 1,
-          currentPrice: 1,
-          currency: actualCode === 'USD' ? 'USD' : 'KRW',
+          quantity: 1,
+          avgPrice: cashAmount,
+          currentPrice: cashAmount,
+          currency: currency,
         };
       } else if (addModalType === 'CUSTOM') {
         newItem = {
@@ -353,8 +363,8 @@ export default function Home() {
           code: 'MANUAL',
           quantity: parseFloat(quantity),
           avgPrice: parseFloat(avgPrice),
-          currentPrice: parseFloat(avgPrice), // 초기 현재가는 매수가와 동일하게 설정
-          currency: 'KRW',
+          currentPrice: parseFloat(avgPrice),
+          currency: currency,
         };
       } else {
         // 주식 (KR_STOCK, US_STOCK)
@@ -402,7 +412,33 @@ export default function Home() {
           ? { ...p, assets: p.assets.filter(a => a.id !== assetId) }
           : p
       ));
+      setShowManageModal(false);
     }
+  };
+
+  // 자산 이동
+  const handleMoveAsset = (fromPid: string, toPid: string, assetId: string) => {
+    setPortfolios(prev => {
+      let movingAsset: Asset | undefined;
+      const updatedPrev = prev.map(p => {
+        if (p.id === fromPid) {
+          movingAsset = p.assets.find(a => a.id === assetId);
+          return { ...p, assets: p.assets.filter(a => a.id !== assetId) };
+        }
+        return p;
+      });
+
+      if (!movingAsset) return prev;
+
+      return updatedPrev.map(p => {
+        if (p.id === toPid) {
+          return { ...p, assets: [...p.assets, movingAsset!] };
+        }
+        return p;
+      });
+    });
+    setShowManageModal(false);
+    setShowMoveSub(false);
   };
 
   // 정렬 헬퍼 함수
@@ -522,8 +558,9 @@ export default function Home() {
   };
 
   // 인라인 편집 시작
-  const startEditAsset = (asset: Asset) => {
+  const startEditAsset = (asset: Asset, field: string = 'name') => {
     setEditingAssetId(asset.id);
+    setEditingField(field);
     setEditAssetData({
       name: asset.name,
       quantity: String(asset.quantity),
@@ -688,15 +725,28 @@ export default function Home() {
     'CASH': 0
   };
 
+  let totalKRWAssets = 0; // 원화 예수금 합계
+  let totalUSDAssets = 0; // 달러 예수금 합계 (USD 단위)
+  let totalUSDAssetsKRW = 0; // 달러 예수금의 원화 환산 합계
+
   portfolios.forEach(p => {
     p.assets.forEach(asset => {
       const rate = asset.currency === 'USD' ? exchangeRate : 1;
       const investValue = (asset.avgPrice * asset.quantity) * rate;
       const currentValue = (asset.currentPrice * asset.quantity) * rate;
 
+      // 성과 측정용 집계 (CASH 제외)
       if (asset.type === 'CASH') {
         totalCashKRW += currentValue;
         weightMap['CASH'] += currentValue;
+
+        // 통화별 예수금 집계
+        if (asset.currency === 'KRW') {
+          totalKRWAssets += (asset.currentPrice * asset.quantity);
+        } else if (asset.currency === 'USD') {
+          totalUSDAssets += (asset.currentPrice * asset.quantity);
+          totalUSDAssetsKRW += currentValue;
+        }
       } else {
         totalStockInvestmentKRW += investValue;
         totalStockCurrentValueKRW += currentValue;
@@ -733,17 +783,17 @@ export default function Home() {
 
     // 포트폴리오별 합계 계산
     let pInvestKRW = 0; // 주식/커스텀 자산 투자 원금만 (예수금 제외)
-    let pCurrentKRW = 0; // 전체 평가 금액 (주식 + 예수금)
-    let pStockCurrentKRW = 0; // 주식/커스텀 자산 평가 금액만
+    let pCurrentKRW = 0; // 주식/커스텀 자산 평가 금액만 (예수금 제외)
+    let pTotalAssetKRW = 0; // 전체 자산 (주식 + 예수금)
+    let pStockCurrentKRW = 0; // 주식/커스텀 자산 평가 금액만 (기존 변수 유지용)
 
     portfolio.assets.forEach(a => {
       const rate = a.currency === 'USD' ? exchangeRate : 1;
       const invest = (a.avgPrice * a.quantity) * rate;
       const current = (a.currentPrice * a.quantity) * rate;
 
-      if (a.type === 'CASH') {
-        pCurrentKRW += current;
-      } else {
+      pTotalAssetKRW += current;
+      if (a.type !== 'CASH') {
         pInvestKRW += invest;
         pCurrentKRW += current;
         pStockCurrentKRW += current;
@@ -780,6 +830,11 @@ export default function Home() {
               style={{ fontSize: '1.5rem', fontWeight: 700, background: 'none', border: 'none', color: '#fff', width: 'auto', minWidth: '100px' }}
               value={portfolio.name}
               onChange={(e) => handleRenamePortfolio(portfolio.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder="포트폴리오 이름"
             />
           </div>
@@ -787,7 +842,7 @@ export default function Home() {
           <div className="header-stats" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
               <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500 }}>총 평가액:</span>
-              <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>{formatMoney(pCurrentKRW, 'KRW')}</strong>
+              <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>{formatMoney(pTotalAssetKRW, 'KRW')}</strong>
             </div>
 
             <button
@@ -873,7 +928,7 @@ export default function Home() {
                     const weightPercent = pCurrentKRW > 0 ? (currentKRW / pCurrentKRW) * 100 : 0;
 
                     return (
-                      <tr key={asset.id} style={{ opacity: asset.type === 'CASH' ? 0.9 : 1 }}>
+                      <tr key={asset.id} className={showManageModal ? "" : "hover-dim"} style={{ opacity: asset.type === 'CASH' ? 0.9 : 1 }}>
                         <td>
                           {editingAssetId === asset.id ? (
                             <input
@@ -883,7 +938,7 @@ export default function Home() {
                               value={editAssetData.name}
                               onChange={(e) => setEditAssetData({ ...editAssetData, name: e.target.value })}
                               onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
-                              autoFocus
+                              autoFocus={editingField === 'name'}
                             />
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -899,7 +954,17 @@ export default function Home() {
                                     {asset.name}
                                   </strong>
                                 ) : (
-                                  <strong style={{ color: 'var(--text-primary)' }}>{asset.name}</strong>
+                                  <strong
+                                    onClick={() => startEditAsset(asset, 'name')}
+                                    style={{
+                                      color: 'var(--text-primary)',
+                                      cursor: 'pointer',
+                                      borderBottom: '1px dashed rgba(255,255,255,0.3)',
+                                      display: 'inline-block'
+                                    }}
+                                  >
+                                    {asset.name}
+                                  </strong>
                                 )}
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{asset.code !== 'CASH' && asset.code !== 'MANUAL' ? asset.code : asset.type}</div>
                               </div>
@@ -917,16 +982,34 @@ export default function Home() {
                                 value={editAssetData.quantity}
                                 onChange={(e) => setEditAssetData({ ...editAssetData, quantity: e.target.value })}
                                 onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
+                                autoFocus={editingField === 'quantity'}
                               />
                             ) : (
-                              <span onClick={() => startEditAsset(asset)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>
+                              <span onClick={() => startEditAsset(asset, 'quantity')} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>
                                 {asset.quantity.toLocaleString()}
                               </span>
                             )
                           )}
                         </td>
                         <td>
-                          {asset.type === 'CASH' ? '-' : (
+                          {asset.type === 'CASH' ? (
+                            editingAssetId === asset.id ? (
+                              <input
+                                type="number"
+                                step="any"
+                                className="glass-input"
+                                style={{ padding: '4px 8px', width: '100px', background: 'rgba(0,0,0,0.5)' }}
+                                value={editAssetData.avgPrice}
+                                onChange={(e) => setEditAssetData({ ...editAssetData, avgPrice: e.target.value, currentPrice: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
+                                autoFocus={editingField === 'avgPrice'}
+                              />
+                            ) : (
+                              <span onClick={() => startEditAsset(asset, 'avgPrice')} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>
+                                {formatMoney(asset.avgPrice, asset.currency)}
+                              </span>
+                            )
+                          ) : (
                             editingAssetId === asset.id ? (
                               <input
                                 type="number"
@@ -936,9 +1019,10 @@ export default function Home() {
                                 value={editAssetData.avgPrice}
                                 onChange={(e) => setEditAssetData({ ...editAssetData, avgPrice: e.target.value })}
                                 onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
+                                autoFocus={editingField === 'avgPrice'}
                               />
                             ) : (
-                              <span onClick={() => startEditAsset(asset)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>
+                              <span onClick={() => startEditAsset(asset, 'avgPrice')} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)' }}>
                                 {formatMoney(asset.avgPrice, asset.currency)}
                               </span>
                             )
@@ -946,7 +1030,7 @@ export default function Home() {
                         </td>
                         <td>
                           {asset.type === 'CASH' ? '-' : (
-                            editingAssetId === asset.id ? (
+                            (editingAssetId === asset.id && asset.type === 'CUSTOM') ? (
                               <input
                                 type="number"
                                 step="any"
@@ -955,26 +1039,29 @@ export default function Home() {
                                 value={editAssetData.currentPrice}
                                 onChange={(e) => setEditAssetData({ ...editAssetData, currentPrice: e.target.value })}
                                 onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
+                                autoFocus={editingField === 'currentPrice'}
                               />
                             ) : (
                               <div style={{ minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                                 {refreshingStockIds.includes(asset.id) ? (
-                                  <div style={{ 
-                                    width: '16px', height: '16px', 
-                                    border: '2px solid rgba(59, 130, 246, 0.2)', 
-                                    borderTopColor: '#3b82f6', 
-                                    borderRadius: '50%', 
-                                    animation: 'spin 0.8s linear infinite' 
+                                  <div style={{
+                                    width: '16px', height: '16px',
+                                    border: '2px solid rgba(59, 130, 246, 0.2)',
+                                    borderTopColor: '#3b82f6',
+                                    borderRadius: '50%',
+                                    animation: 'spin 0.8s linear infinite'
                                   }}></div>
                                 ) : (
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', opacity: pendingStockIds.includes(asset.id) ? 0.4 : 1 }}>
-                                    <div 
-                                      className={pendingStockIds.includes(asset.id) ? '' : ((asset.changePercent || 0) >= 0 ? 'text-success' : 'text-danger')} 
-                                      onClick={() => asset.type === 'CUSTOM' && startEditAsset(asset)} 
-                                      style={{ 
-                                        cursor: asset.type === 'CUSTOM' ? 'pointer' : 'default', 
+                                    <div
+                                      className={pendingStockIds.includes(asset.id) ? '' : (asset.type === 'CUSTOM' ? '' : ((asset.changePercent || 0) >= 0 ? 'text-success' : 'text-danger'))}
+                                      onClick={() => asset.type === 'CUSTOM' && startEditAsset(asset, 'currentPrice')}
+                                      style={{
+                                        cursor: asset.type === 'CUSTOM' ? 'pointer' : 'default',
                                         fontWeight: 600,
-                                        color: pendingStockIds.includes(asset.id) ? 'var(--text-secondary)' : undefined
+                                        color: pendingStockIds.includes(asset.id) ? 'var(--text-secondary)' : (asset.type === 'CUSTOM' ? 'var(--text-primary)' : undefined),
+                                        borderBottom: asset.type === 'CUSTOM' ? '1px dashed var(--text-secondary)' : 'none',
+                                        display: asset.type === 'CUSTOM' ? 'inline-block' : 'block'
                                       }}
                                     >
                                       {formatMoney(asset.currentPrice, asset.currency)}
@@ -992,31 +1079,14 @@ export default function Home() {
                         </td>
                         <td>{asset.type === 'CASH' ? '-' : formatMoney(investmentKRW, 'KRW')}</td>
                         <td>
-                          {asset.type === 'CASH' ? (
-                            editingAssetId === asset.id ? (
-                              <input
-                                type="number"
-                                step="any"
-                                className="glass-input"
-                                style={{ padding: '4px 8px', width: '120px', background: 'rgba(0,0,0,0.5)' }}
-                                value={editAssetData.quantity}
-                                onChange={(e) => setEditAssetData({ ...editAssetData, quantity: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'Enter') saveEditAsset(portfolio.id, asset.id); if (e.key === 'Escape') setEditingAssetId(null); }}
-                                autoFocus
-                              />
-                            ) : (
-                              <div onClick={() => startEditAsset(asset)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-secondary)', display: 'inline-block' }}>
-                                <div style={{ fontWeight: 600 }}>{formatMoney(currentKRW, 'KRW')}</div>
-                                {asset.currency !== 'KRW' && (
-                                  <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>({formatMoney(asset.quantity, asset.currency)})</div>
-                                )}
-                              </div>
-                            )
-                          ) : (
+                          {asset.type === 'CASH' ? '-' : (
                             formatMoney(currentKRW, 'KRW')
                           )}
                         </td>
-                        <td className={returnAmountKRW >= 0 ? 'text-success' : 'text-danger'}>
+                        <td
+                          className={asset.type === 'CASH' ? '' : (returnAmountKRW >= 0 ? 'text-success' : 'text-danger')}
+                          style={asset.type === 'CASH' ? { color: 'var(--text-primary)' } : {}}
+                        >
                           {asset.type === 'CASH' ? '-' : (
                             <>
                               <div style={{ fontWeight: 600 }}>{returnAmountKRW >= 0 ? '+' : ''}{formatMoney(returnAmountKRW, 'KRW')}</div>
@@ -1026,8 +1096,26 @@ export default function Home() {
                         </td>
                         <td>{weightPercent.toFixed(1)}%</td>
                         <td style={{ textAlign: 'center' }}>
-                          <button onClick={() => handleDeleteAsset(portfolio.id, asset.id)} className="delete-button" style={{ background: 'rgba(239, 68, 68, 0.35)', color: '#fff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setMenuPosition({
+                                top: rect.bottom + window.scrollY + 8,
+                                left: rect.left + window.scrollX - 120
+                              });
+                              setManagingAssetInfo({ fromPid: portfolio.id, asset });
+                              setShowManageModal(true);
+                              setShowMoveSub(false);
+                            }}
+                            className="glass-button"
+                            style={{
+                              width: '32px', height: '32px', padding: 0, borderRadius: '8px',
+                              display: 'flex', justifyContent: 'center', alignItems: 'center',
+                              margin: '0 auto', background: showManageModal && managingAssetInfo?.asset.id === asset.id ? 'rgba(255,255,255,0.15)' : 'transparent'
+                            }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>
                           </button>
                         </td>
                       </tr>
@@ -1132,7 +1220,7 @@ export default function Home() {
           </div>
 
 
-          
+
           {/* 중앙 핵심 지표 영역 (카드 스타일 - 반응형 적용) */}
           <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
 
@@ -1182,31 +1270,22 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ fontSize: '1.5rem' }}>🇰🇷</div>
               <div>
-                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '2px' }}>원화 자산 (현금 포함)</div>
+                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '2px' }}>원화 예수금</div>
                 <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                  {formatMoney(
-                    portfolios.reduce((sum, p) => sum + p.assets.filter(a => a.currency === 'KRW').reduce((s, a) => s + (a.currentPrice * a.quantity), 0), 0),
-                    'KRW'
-                  )}
+                  {formatMoney(totalKRWAssets, 'KRW')}
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ fontSize: '1.5rem' }}>🇺🇸</div>
               <div>
-                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '2px' }}>외화 자산 (USD 환산)</div>
+                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '2px' }}>달러 예수금</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                   <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                    {formatMoney(
-                      portfolios.reduce((sum, p) => sum + p.assets.filter(a => a.currency === 'USD').reduce((s, a) => s + (a.currentPrice * a.quantity), 0), 0),
-                      'USD'
-                    )}
+                    {formatMoney(totalUSDAssets, 'USD')}
                   </span>
                   <span className="text-secondary" style={{ fontSize: '0.85rem' }}>
-                    (≈ {formatMoney(
-                      portfolios.reduce((sum, p) => sum + p.assets.filter(a => a.currency === 'USD').reduce((s, a) => s + (a.currentPrice * a.quantity * exchangeRate), 0), 0),
-                      'KRW'
-                    )})
+                    (≈ {formatMoney(totalUSDAssetsKRW, 'KRW')})
                   </span>
                 </div>
               </div>
@@ -1299,10 +1378,98 @@ export default function Home() {
         setQuantity={setQuantity}
         loading={loading}
         errorMsg={errorMsg}
+        setErrorMsg={setErrorMsg}
+        currency={currency}
+        setCurrency={setCurrency}
         onSubmit={handleAddStock}
         actualCode={actualCode}
         setActualCode={setActualCode}
       />
+
+      {/* 자산 관리 플로팅 메뉴 (계층형 서브 메뉴 포함) */}
+      {showManageModal && managingAssetInfo && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 10000 }}
+            onClick={() => { setShowManageModal(false); setShowMoveSub(false); }}
+          />
+
+          <div style={{ position: 'absolute', top: menuPosition.top, left: menuPosition.left, zIndex: 10001 }}>
+            {/* 메인 관리 메뉴 */}
+            <div
+              className="glass-panel"
+              style={{
+                width: '160px', padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                background: '#1a1a1f', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px',
+                animation: 'fadeIn 0.15s ease-out', position: 'relative'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ padding: '8px 12px', fontSize: '0.8rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '4px' }}>
+                {managingAssetInfo.asset.name}
+              </div>
+
+              {/* 서브 메뉴 (포트폴리오 선택) - 메인 메뉴의 왼쪽에 절대 위치로 표시 */}
+              {showMoveSub && (
+                <div
+                  className="glass-panel"
+                  style={{
+                    position: 'absolute', right: 'calc(100% + 8px)', top: '0',
+                    width: '180px', padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    background: '#1a1a1f', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px',
+                    animation: 'fadeInLeft 0.2s ease-out'
+                  }}
+                >
+                  <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '4px' }}>
+                    이동할 대상 선택
+                  </div>
+                  {portfolios.filter(p => p.id !== managingAssetInfo.fromPid).length === 0 ? (
+                    <div style={{ padding: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>대상 없음</div>
+                  ) : (
+                    portfolios.filter(p => p.id !== managingAssetInfo.fromPid).map(p => (
+                      <button
+                        key={p.id}
+                        className="glass-button hover-bright"
+                        style={{
+                          justifyContent: 'flex-start', padding: '10px 12px', fontSize: '0.85rem',
+                          border: 'none', background: 'transparent', width: '100%', borderRadius: '8px',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          display: 'block', textAlign: 'left'
+                        }}
+                        onClick={() => handleMoveAsset(managingAssetInfo.fromPid, p.id, managingAssetInfo.asset.id)}
+                        title={p.name}
+                      >
+                        📁 {p.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              <button
+                className="glass-button hover-bright"
+                style={{
+                  justifyContent: 'space-between', padding: '10px 12px', fontSize: '0.9rem', border: 'none',
+                  background: showMoveSub ? 'rgba(59, 130, 246, 0.2)' : 'transparent', width: '100%', borderRadius: '8px'
+                }}
+                onMouseEnter={() => setShowMoveSub(true)}
+                onClick={(e) => { e.stopPropagation(); setShowMoveSub(!showMoveSub); }}
+              >
+                <span>🚚 이동</span>
+                <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>▶</span>
+              </button>
+              <button
+                className="glass-button hover-bright"
+                style={{ justifyContent: 'flex-start', padding: '10px 12px', fontSize: '0.9rem', border: 'none', color: '#ff5555', background: 'transparent', width: '100%', borderRadius: '8px' }}
+                onMouseEnter={() => setShowMoveSub(false)}
+                onClick={(e) => { e.stopPropagation(); handleDeleteAsset(managingAssetInfo.fromPid, managingAssetInfo.asset.id); }}
+              >
+                🗑️ 삭제
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* 개별 종목 상세 모달 */}
       <StockDetailModal
@@ -1456,7 +1623,7 @@ const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRate }: E
   );
 };
 
-const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCode, setActualCode, avgPrice, setAvgPrice, quantity, setQuantity, loading, errorMsg, onSubmit }: AddStockModalProps) => {
+const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCode, setActualCode, avgPrice, setAvgPrice, quantity, setQuantity, loading, errorMsg, setErrorMsg, currency, setCurrency, onSubmit }: AddStockModalProps) => {
   const [searchResults, setSearchResults] = useState<{ code: string, name: string, market: string }[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -1507,9 +1674,10 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
     setType(newType);
     setCode('');
     setActualCode(newType === 'CASH' ? 'KRW' : newType === 'CUSTOM' ? 'MANUAL' : '');
-    setAvgPrice(newType === 'CASH' ? '1' : '');
-    setQuantity('');
+    setAvgPrice('');
+    setQuantity(newType === 'CASH' ? '1' : '');
     setErrorMsg('');
+    setCurrency(newType === 'US_STOCK' ? 'USD' : 'KRW');
   };
 
   if (!isOpen) return null;
@@ -1592,10 +1760,10 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
                   type="button"
-                  onClick={() => setActualCode('KRW')}
+                  onClick={() => setCurrency('KRW')}
                   style={{
                     flex: 1, padding: '10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)',
-                    background: actualCode === 'KRW' || actualCode === '' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                    background: currency === 'KRW' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
                     color: '#fff', cursor: 'pointer'
                   }}
                 >
@@ -1603,10 +1771,10 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActualCode('USD')}
+                  onClick={() => setCurrency('USD')}
                   style={{
                     flex: 1, padding: '10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)',
-                    background: actualCode === 'USD' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                    background: currency === 'USD' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
                     color: '#fff', cursor: 'pointer'
                   }}
                 >
@@ -1655,17 +1823,55 @@ const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, actualCo
             )}
           </div>
 
-          <div className="input-group" style={{ marginBottom: 0 }}>
-            <label className="input-label">{type === 'CASH' ? '금액' : '보유 수량'}</label>
-            <input type="number" step="any" className="glass-input" value={quantity} onChange={(e) => setQuantity(e.target.value)} style={{ width: '100%' }} required />
-          </div>
-
           {type !== 'CASH' && (
             <div className="input-group" style={{ marginBottom: 0 }}>
-              <label className="input-label">평균 단가</label>
-              <input type="number" step="any" className="glass-input" value={avgPrice} onChange={(e) => setAvgPrice(e.target.value)} style={{ width: '100%' }} required />
+              <label className="input-label">보유 수량</label>
+              <input type="number" step="any" className="glass-input" value={quantity} onChange={(e) => setQuantity(e.target.value)} style={{ width: '100%' }} required />
             </div>
           )}
+
+          <div className="input-group" style={{ marginBottom: 0 }}>
+            <label className="input-label">{type === 'CASH' ? '금액' : '평균 단가'}</label>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="number"
+                step="any"
+                className="glass-input"
+                value={avgPrice}
+                onChange={(e) => setAvgPrice(e.target.value)}
+                style={{ flex: 1 }}
+                required
+              />
+              {type === 'CUSTOM' && (
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCurrency('KRW')}
+                    style={{
+                      padding: '0 8px', borderRadius: '8px', border: 'none',
+                      background: currency === 'KRW' ? 'var(--accent-blue)' : 'transparent',
+                      color: '#fff', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    🇰🇷 KRW
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrency('USD')}
+                    style={{
+                      padding: '0 8px', borderRadius: '8px', border: 'none',
+                      background: currency === 'USD' ? 'var(--accent-blue)' : 'transparent',
+                      color: '#fff', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    🇺🇸 USD
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
           {errorMsg && <p className="text-danger" style={{ fontSize: '0.85rem', textAlign: 'center' }}>{errorMsg}</p>}
 
