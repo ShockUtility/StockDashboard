@@ -5,7 +5,8 @@ import path from 'path';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const country = searchParams.get('country') || 'KR';
+    const country = searchParams.get('country') || 'KR';
+  const withName = searchParams.get('withName') === 'true';
 
   if (!code) {
     return NextResponse.json({ error: '종목 코드가 필요합니다.' }, { status: 400 });
@@ -18,7 +19,9 @@ export async function GET(request: Request) {
     const scriptPath = path.join(process.cwd(), 'python', 'get_stock.py');
 
     // 파이썬 프로세스 실행
-    const pyProcess = spawn(pythonExecutable, [scriptPath, code, country]);
+    const args = [scriptPath, code, country];
+    if (withName) args.push('--with-name');
+    const pyProcess = spawn(pythonExecutable, args);
 
     let dataString = '';
     let errorString = '';

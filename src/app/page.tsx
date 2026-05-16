@@ -228,7 +228,7 @@ export default function Home() {
     setLoading(true);
     try {
       // 서버 API를 호출하여 종목 정보를 가져옵니다.
-      const res = await fetch(`/api/stock?code=${encodeURIComponent(code)}&country=${addModalType}`);
+      const res = await fetch(`/api/stock?code=${encodeURIComponent(code)}&country=${addModalType}&withName=true`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '항목 정보를 불러오지 못했습니다.');
 

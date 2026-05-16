@@ -3,6 +3,26 @@ import json
 import FinanceDataReader as fdr
 from datetime import datetime, timedelta
 
+def get_stock_name(code, country):
+    try:
+        if country == "KR" or (country == "AUTO" and code.isdigit()):
+            df = fdr.StockListing('KRX')
+            if 'Code' in df.columns:
+                name = df[df['Code'] == code]['Name'].values
+                if len(name) > 0:
+                    return name[0]
+        else:
+            # 미국 주식 검색
+            for mkt in ['NASDAQ', 'NYSE', 'AMEX']:
+                df = fdr.StockListing(mkt)
+                if 'Symbol' in df.columns:
+                    name = df[df['Symbol'] == code]['Name'].values
+                    if len(name) > 0:
+                        return name[0]
+    except Exception as e:
+        pass
+    return code
+
 def main():
     if len(sys.argv) < 2:
         print(json.dumps({"error": "종목 코드를 입력해주세요."}))
@@ -10,6 +30,7 @@ def main():
 
     code = sys.argv[1].upper()
     country = sys.argv[2].upper() if len(sys.argv) > 2 else "AUTO"
+    with_name = True if len(sys.argv) > 3 and sys.argv[3] == "--with-name" else False
 
     try:
         # [최적화] 전체 데이터를 가져오는 대신, 최근 10일치 데이터만 가져와서 속도를 대폭 향상시킵니다.
@@ -38,13 +59,16 @@ def main():
         else:
             currency = "USD"
             
-        # [최적화] 시세 갱신 속도를 위해 불필요한 종목명 조회 로직을 완전히 제거했습니다.
         result = {
             "code": code,
             "currentPrice": current_price,
             "changePercent": change_percent,
             "currency": currency
         }
+        
+        # --with-name 파라미터가 있을 때만 종목명 검색 (속도 저하 방지)
+        if with_name:
+            result["name"] = get_stock_name(code, country)
         
         print(json.dumps(result, ensure_ascii=False))
         
