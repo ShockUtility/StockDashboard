@@ -62,7 +62,7 @@ def main():
                 })
                 continue
                 
-            # 최근 최대 30개의 데이터만 사용합니다. (팝업 차트용)
+            # 최근 최대 30개의 데이터만 사용합니다.
             recent_df = df.tail(30)
             
             current_price = float(recent_df.iloc[-1]['Close'])
@@ -81,14 +81,20 @@ def main():
                 current_price *= 100
                 change_amount *= 100
                 
-            # 차트에 사용할 종가 데이터 리스트 생성 (30일치)
-            sparkline_data = recent_df['Close'].tolist()
-            
-            # 엔화 환율의 경우 차트 데이터도 100을 곱해줍니다.
-            if symbol == "JPY/KRW":
-                sparkline_data = [float(price) * 100 for price in sparkline_data]
-            else:
-                sparkline_data = [float(price) for price in sparkline_data]
+            # 차트에 사용할 데이터 리스트 생성 (날짜와 값 포함)
+            sparkline_data = []
+            for index, row in recent_df.iterrows():
+                # 인덱스가 datetime 객체인 경우 포맷팅합니다.
+                date_str = index.strftime('%Y-%m-%d') if hasattr(index, 'strftime') else str(index)
+                price = float(row['Close'])
+                
+                if symbol == "JPY/KRW":
+                    price *= 100
+                    
+                sparkline_data.append({
+                    "date": date_str,
+                    "value": price
+                })
                 
             results.append({
                 "symbol": symbol,
@@ -96,7 +102,7 @@ def main():
                 "currentPrice": current_price,
                 "changeAmount": change_amount,
                 "changePercent": change_percent,
-                "sparklineData": sparkline_data # 30일간의 차트 데이터
+                "sparklineData": sparkline_data # 날짜와 값이 포함된 배열
             })
         except Exception as e:
             results.append({

@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from 'react';
 // Recharts 라이브러리에서 필요한 컴포넌트들을 가져옵니다.
-// 팝업 모달에서 영역 차트를 그리기 위해 AreaChart와 Area를 추가로 가져옵니다.
 import { LineChart, Line, YAxis, ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
+
+interface SparklinePoint {
+  date: string;
+  value: number;
+}
 
 interface IndicatorData {
   symbol: string;
@@ -12,7 +16,7 @@ interface IndicatorData {
   changeAmount?: number;
   changePercent?: number;
   error?: string;
-  sparklineData?: number[]; // 30일간의 차트 데이터를 위한 필드
+  sparklineData?: SparklinePoint[]; // 날짜와 값이 포함된 데이터 타입
 }
 
 // 심볼에 맞는 이모지(국기 또는 아이콘)를 반환하는 함수입니다.
@@ -44,11 +48,22 @@ const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalPro
 
   // 차트에 사용할 데이터 가공 (30일치)
   const chartData = item.sparklineData 
-    ? item.sparklineData.map((val, index) => ({
-        value: val,
-        // 인덱스를 기반으로 날짜 레이블을 임시로 생성합니다.
-        displayDate: index === item.sparklineData!.length - 1 ? '오늘' : `${item.sparklineData!.length - 1 - index}일 전`
-      }))
+    ? item.sparklineData.map((d) => {
+        const dateParts = d.date.split('-');
+        let displayDate = d.date;
+        
+        if (dateParts.length === 3) {
+          const month = parseInt(dateParts[1], 10);
+          const day = parseInt(dateParts[2], 10);
+          displayDate = `${month}월 ${day}일`;
+        }
+        
+        return {
+          value: d.value,
+          displayDate: displayDate,
+          fullDate: d.date
+        };
+      })
     : [];
 
   const minVal = chartData.length > 0 ? Math.min(...chartData.map(d => d.value)) : 0;
@@ -60,7 +75,6 @@ const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalPro
 
   const isUp = (item.changeAmount || 0) >= 0;
   const strokeColor = isUp ? 'var(--success-red)' : 'var(--danger-blue)';
-  // 그라데이션에 사용할 색상 (상승은 빨강 계열, 하락은 파랑 계열)
   const gradientColor = isUp ? '#ef4444' : '#3b82f6'; 
 
   return (
@@ -88,20 +102,26 @@ const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalPro
                 axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                 tickLine={false}
                 tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }}
-                interval={Math.floor(chartData.length / 5)} // 레이블이 겹치지 않게 간격을 둡니다.
+                interval={Math.floor(chartData.length / 5)}
               />
               <YAxis hide domain={[domainMin, domainMax]} />
               <Tooltip
                 labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
                 contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
-                formatter={(value: any) => [`${value.toLocaleString()}`, '가격']}
+                // formatter를 수정하여 가격이 두 번 표기되는 현상을 해결합니다.
+                formatter={(value: any, name: any) => {
+                  // 배경을 채우는 Area(가격영역)는 툴팁에서 제외합니다.
+                  if (name === '가격영역') return [null, null];
+                  return [`${value.toLocaleString()}`, '가격'];
+                }}
               />
-              {/* 배경 그라데이션 영역 */}
-              <Area type="monotone" dataKey="value" name="가격" stroke="none" fillOpacity={1} fill="url(#colorIndicator)" />
-              {/* 메인 선 */}
+              {/* 배경 그라데이션 영역: 이름을 '가격영역'으로 지정하여 툴팁에서 걸러냅니다. */}
+              <Area type="monotone" dataKey="value" name="가격영역" stroke="none" fillOpacity={1} fill="url(#colorIndicator)" />
+              {/* 메인 선: 이름을 '가격'으로 지정하여 이것만 툴팁에 나오게 합니다. */}
               <Line
                 type="monotone"
                 dataKey="value"
+                name="가격"
                 stroke={strokeColor}
                 strokeWidth={3}
                 dot={false}
@@ -249,14 +269,10 @@ export const IndexStatusSection = () => {
       {items.map((item) => {
         const isUp = (item.changeAmount || 0) >= 0;
         const colorClass = isUp ? 'text-success' : 'text-danger';
-        
-        // 변동률 색상과 일치시키기 위해 CSS 변수를 그대로 사용합니다.
         const strokeColor = isUp ? 'var(--success-red)' : 'var(--danger-blue)';
 
-        // Recharts에서 사용할 수 있는 형태로 데이터 가공 (30일치)
-        const chartData = item.sparklineData 
-          ? item.sparklineData.map((val, idx) => ({ value: val }))
-          : [];
+        // 지수 카드의 미니 차트용 데이터는 이미 객체 배열이므로 그대로 사용합니다.
+        const chartData = item.sparklineData || [];
 
         return (
           <div 
@@ -273,7 +289,7 @@ export const IndexStatusSection = () => {
               opacity: isSectionLoading ? 0.7 : 1, 
               transition: 'opacity 0.2s', 
               minHeight: '130px',
-              cursor: 'pointer' // 클릭 가능함을 알리기 위해 커서를 포인터로 설정합니다.
+              cursor: 'pointer'
             }}
             onClick={() => {
               setSelectedItem(item);
@@ -317,7 +333,6 @@ export const IndexStatusSection = () => {
                   </div>
 
                   {/* 우측: 30일간의 간략한 차트 (스파크라인) */}
-                  {/* pointerEvents: 'none' 을 추가하여 카드 클릭 이벤트가 방해받지 않도록 합니다. */}
                   {chartData.length > 0 && (
                     <div style={{ width: '120px', height: '50px', pointerEvents: 'none' }}>
                       <ResponsiveContainer width="100%" height="100%">

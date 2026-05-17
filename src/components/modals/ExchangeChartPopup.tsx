@@ -73,7 +73,7 @@ export const ExchangeRateModal = ({ isOpen, onClose, exchangeHistory, exchangeRa
                 dataKey="rate"
                 stroke="#3b82f6"
                 strokeWidth={3}
-                dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#0f172a' }}
+                dot={false} // 사용자의 요청으로 변곡점의 점을 제거했습니다.
                 activeDot={{ r: 6, strokeWidth: 0 }}
               />
             </AreaChart>
