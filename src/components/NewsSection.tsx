@@ -57,7 +57,6 @@ export const NewsSection = ({ portfolios, exchangeRate }: NewsSectionProps) => {
     setNews([]);
     
     try {
-      // 직접 구글로 요청하지 않고, 우리가 만든 API 라우트를 경유합니다.
       const url = `/api/news?q=${encodeURIComponent(stockName)}`;
       
       const res = await fetch(url);
@@ -68,20 +67,27 @@ export const NewsSection = ({ portfolios, exchangeRate }: NewsSectionProps) => {
       const xml = parser.parseFromString(text, "text/xml");
       const items = xml.querySelectorAll("item");
       
-      const newsList: NewsItem[] = Array.from(items).map(item => {
-        const title = item.querySelector("title")?.textContent || '';
-        const link = item.querySelector("link")?.textContent || '';
-        const pubDateStr = item.querySelector("pubDate")?.textContent || '';
-        const source = item.querySelector("source")?.textContent || '';
-        
-        return { 
-          title, 
-          link, 
-          pubDate: new Date(pubDateStr), 
-          pubDateStr, 
-          source 
-        };
-      });
+      // 한 달 전 날짜 계산
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      
+      const newsList: NewsItem[] = Array.from(items)
+        .map(item => {
+          const title = item.querySelector("title")?.textContent || '';
+          const link = item.querySelector("link")?.textContent || '';
+          const pubDateStr = item.querySelector("pubDate")?.textContent || '';
+          const source = item.querySelector("source")?.textContent || '';
+          
+          return { 
+            title, 
+            link, 
+            pubDate: new Date(pubDateStr), 
+            pubDateStr, 
+            source 
+          };
+        })
+        // 한 달 이내의 뉴스만 필터링
+        .filter(item => item.pubDate >= oneMonthAgo);
       
       // 날짜순 정렬 (최신순)
       newsList.sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
@@ -146,7 +152,7 @@ export const NewsSection = ({ portfolios, exchangeRate }: NewsSectionProps) => {
           <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: 0 }}>
             📰 {selectedStock ? `[${selectedStock}] 관련 뉴스` : '실시간 뉴스'}
           </h3>
-          <p className="text-secondary" style={{ fontSize: '0.85rem', marginTop: '4px' }}>구글 RSS 검색 결과입니다.</p>
+          <p className="text-secondary" style={{ fontSize: '0.85rem', marginTop: '4px' }}>최근 한 달 이내의 구글 RSS 검색 결과입니다.</p>
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '700px', flex: 1 }}>
@@ -188,7 +194,7 @@ export const NewsSection = ({ portfolios, exchangeRate }: NewsSectionProps) => {
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.03)' }}>
               <div style={{ textAlign: 'center' }}>
                 <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '12px' }}>📡</span>
-                {selectedStock ? '검색된 뉴스가 없습니다.' : '좌측에서 종목을 선택하시면 뉴스가 표시됩니다.'}
+                {selectedStock ? '최근 한 달 이내의 뉴스가 없습니다.' : '좌측에서 종목을 선택하시면 뉴스가 표시됩니다.'}
               </div>
             </div>
           )}
