@@ -34,11 +34,11 @@ export const DashboardSummary = ({
       <div className="flex-between" style={{ alignItems: 'flex-start' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.8rem' }}>💎</span> 전체 자산 요약
+            💎 전체 자산 요약
           </h2>
           <p className="text-secondary" style={{ marginTop: '4px', fontSize: '0.9rem' }}>실시간 시세와 환율이 반영된 총 자산 현황입니다.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
           <div
             onClick={onShowExchangeModal}
             style={{

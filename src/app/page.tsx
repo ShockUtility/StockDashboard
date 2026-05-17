@@ -58,10 +58,10 @@ export default function Home() {
   const [managingAssetInfo, setManagingAssetInfo] = useState<{ fromPid: string, asset: Asset } | null>(null);
 
   const [showExchangeModal, setShowExchangeModal] = useState(false);
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [addModalType, setAddModalType] = useState<Asset['type']>('KR_STOCK');
-  
+
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
@@ -215,22 +215,22 @@ export default function Home() {
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .clickable-stock-name:hover strong { color: #c4b5fd; }
       `}</style>
-      
+
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '48px' }}>
         <div>
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', textAlign: 'left', marginBottom: '10px', marginTop: 0 }}>내 자산 포트폴리오 Vibe</h1>
           <p className="text-secondary" style={{ textAlign: 'left', margin: 0 }}>주식부터 금현물까지, 실시간 자산 현황을 한눈에 관리하세요.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="glass-button" style={{ padding: '8px 14px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.2)' }} onClick={handleExport}>⬇️ 데이터 내보내기</button>
-          <button className="glass-button" style={{ padding: '8px 14px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.2)' }} onClick={() => { if(confirm('기존 데이터가 덮어쓰기 됩니다.')) fileInputRef.current?.click(); }}>⬆️ 데이터 불러오기</button>
-          <button className="glass-button" style={{ padding: '8px 14px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)' }} onClick={handleResetData}>🗑️ 초기화</button>
+          <button className="glass-button" style={{ padding: '8px 20px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.2)', whiteSpace: 'nowrap' }} onClick={handleExport}>⬇️ 데이터 내보내기</button>
+          <button className="glass-button" style={{ padding: '8px 20px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.2)', whiteSpace: 'nowrap' }} onClick={() => { if (confirm('기존 데이터가 덮어쓰기 됩니다.')) fileInputRef.current?.click(); }}>⬆️ 데이터 불러오기</button>
+          <button className="glass-button" style={{ padding: '8px 20px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', whiteSpace: 'nowrap' }} onClick={handleResetData}>🗑️ 초기화</button>
           <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportFileChange} style={{ display: 'none' }} />
         </div>
       </header>
 
       <div className="dashboard-grid">
-        <DashboardSummary 
+        <DashboardSummary
           totalInvestmentKRW={totals.totalInvestmentKRW}
           totalCurrentValueKRW={totals.totalCurrentValueKRW}
           totalReturnAmountKRW={totals.totalReturnAmountKRW}
@@ -246,11 +246,11 @@ export default function Home() {
         />
 
         <section className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '24px' }}>📊 자산 비중</h2>
-          <div className="pie-chart-container" style={{ width: '100%', height: '320px', marginBottom: '20px', cursor: 'pointer' }} onClick={() => { setPieModalTitle('전체 자산 비중'); setPieModalData(totals.totalPieData); setShowPieModal(true); }}>
+          <h2 style={{ fontSize: '1.5rem' }}>📊 자산 비중</h2>
+          <div className="pie-chart-container" style={{ width: '100%', height: '240px', marginBottom: '16px', cursor: 'pointer' }} onClick={() => { setPieModalTitle('전체 자산 비중'); setPieModalData(totals.totalPieData); setShowPieModal(true); }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={totals.totalPieData} cx="50%" cy="50%" innerRadius={100} outerRadius={150} paddingAngle={5} dataKey="value" stroke="none">
+                <Pie data={totals.totalPieData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value" stroke="none">
                   {totals.totalPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} />)}
                 </Pie>
                 <Tooltip formatter={(value: any) => formatMoney(Number(value), 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
@@ -331,7 +331,7 @@ export default function Home() {
           </div>
         </>
       )}
-      
+
       {activeMainTab === 'ASSET' && (
         <AssetStatusSection
           portfolios={portfolios}
