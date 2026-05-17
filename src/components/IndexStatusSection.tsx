@@ -225,7 +225,7 @@ export const IndexStatusSection = () => {
               strokeWidth="2.5" 
               strokeLinecap="round" 
               strokeLinejoin="round" 
-              style={{ animation: indicesLoading ? 'spin 1s linear infinite' : 'none' }}
+              style={{ animation: (indicesLoading || loading) ? 'spin 1s linear infinite' : 'none' }}
             >
               <path d="M23 4v6h-6"></path>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
@@ -264,7 +264,7 @@ export const IndexStatusSection = () => {
               strokeWidth="2.5" 
               strokeLinecap="round" 
               strokeLinejoin="round" 
-              style={{ animation: ratesLoading ? 'spin 1s linear infinite' : 'none' }}
+              style={{ animation: (ratesLoading || loading) ? 'spin 1s linear infinite' : 'none' }}
             >
               <path d="M23 4v6h-6"></path>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>

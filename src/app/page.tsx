@@ -14,6 +14,7 @@ import { DashboardSummary } from '../components/DashboardSummary';
 import { PortfolioSection } from '../components/PortfolioSection';
 import { AssetStatusSection } from '../components/AssetStatusSection';
 import { IndexStatusSection } from '../components/IndexStatusSection';
+import { NewsSection } from '../components/NewsSection';
 
 // Modals
 import { PieModal } from '../components/modals/PortfolioPieModal';
@@ -40,7 +41,7 @@ export default function Home() {
   };
 
   // UI State
-  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET' | 'INDEX'>('MANAGE');
+  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET' | 'INDEX' | 'NEWS'>('MANAGE');
   const [collapsedPortfolios, setCollapsedPortfolios] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(false);
   const [refreshIndex, setRefreshIndex] = useState<number>(0);
@@ -306,6 +307,7 @@ export default function Home() {
           <button onClick={() => setActiveMainTab('MANAGE')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'MANAGE' ? 'rgba(59, 130, 246, 0.8)' : 'transparent', color: activeMainTab === 'MANAGE' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📂</span> 계좌 관리</button>
           <button onClick={() => setActiveMainTab('ASSET')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'ASSET' ? 'rgba(139, 92, 246, 0.8)' : 'transparent', color: activeMainTab === 'ASSET' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📊</span> 자산별 현황</button>
           <button onClick={() => setActiveMainTab('INDEX')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'INDEX' ? 'rgba(16, 185, 129, 0.8)' : 'transparent', color: activeMainTab === 'INDEX' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📈</span> 지수 현황</button>
+          <button onClick={() => setActiveMainTab('NEWS')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'NEWS' ? 'rgba(245, 158, 11, 0.8)' : 'transparent', color: activeMainTab === 'NEWS' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📰</span> 뉴스</button>
         </div>
       </div>
 
@@ -369,6 +371,10 @@ export default function Home() {
 
       {activeMainTab === 'INDEX' && (
         <IndexStatusSection />
+      )}
+
+      {activeMainTab === 'NEWS' && (
+        <NewsSection portfolios={portfolios} exchangeRate={exchangeRate} />
       )}
 
       {/* 플로팅 관리 메뉴 */}
