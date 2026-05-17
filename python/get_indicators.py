@@ -15,18 +15,18 @@ def main():
 
         "CL=F": "WTI",
         "BZ=F": "브렌트유",
-        "GC=F": "국제 금값",
-        "SI=F": "국제 은값",
-        "HG=F": "국제 구리값",        
+        "GC=F": "국제 금",
+        "SI=F": "국제 은",
+        "HG=F": "국제 구리",        
 
         "BTC-USD": "비트코인",
         "ETH-USD": "이더리움",
         
         # 환율
-        "USD/KRW": "원/달러 환율",
-        "EUR/KRW": "유로 (EUR/KRW)",
-        "JPY/KRW": "원/엔화 환율",
-        "CNY/KRW": "위안화 (CNY/KRW)"
+        "USD/KRW": "원/달러",
+        "EUR/KRW": "원/유로",
+        "JPY/KRW": "원/엔화",
+        "CNY/KRW": "원/위안화"
     }
 
     # 인자값에 따라 필터링
