@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+// Recharts 라이브러리에서 필요한 컴포넌트들을 가져옵니다.
+// 팝업 모달에서 영역 차트를 그리기 위해 AreaChart와 Area를 추가로 가져옵니다.
+import { LineChart, Line, YAxis, ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
 
 interface IndicatorData {
   symbol: string;
@@ -9,14 +12,16 @@ interface IndicatorData {
   changeAmount?: number;
   changePercent?: number;
   error?: string;
+  sparklineData?: number[]; // 30일간의 차트 데이터를 위한 필드
 }
 
+// 심볼에 맞는 이모지(국기 또는 아이콘)를 반환하는 함수입니다.
 const getEmoji = (symbol: string) => {
   if (symbol.startsWith('KS') || symbol.startsWith('KQ')) return '🇰🇷';
   if (symbol.startsWith('US') || symbol.startsWith('IX') || symbol.startsWith('DJ')) return '🇺🇸';
   if (symbol === 'USD/KRW') return '💵';
-  if (symbol === 'JPY/KRW') return '💴';
-  if (symbol === 'EUR/KRW') return '💶';
+  if (symbol === 'JPY/KRW') return '🇯🇵';
+  if (symbol === 'EUR/KRW') return '🇪🇺';
   if (symbol === 'CNY/KRW') return '🇨🇳';
   if (symbol === 'GC=F') return '🏅';
   if (symbol === 'CL=F') return '🛢️';
@@ -25,6 +30,100 @@ const getEmoji = (symbol: string) => {
   if (symbol === 'BTC-USD') return '₿';
   if (symbol === 'ETH-USD') return '⟠';
   return '📈';
+};
+
+// 지수 상세 정보를 보여주는 팝업 모달 컴포넌트입니다.
+interface IndicatorDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  item: IndicatorData;
+}
+
+const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalProps) => {
+  if (!isOpen) return null;
+
+  // 차트에 사용할 데이터 가공 (30일치)
+  const chartData = item.sparklineData 
+    ? item.sparklineData.map((val, index) => ({
+        value: val,
+        // 인덱스를 기반으로 날짜 레이블을 임시로 생성합니다.
+        displayDate: index === item.sparklineData!.length - 1 ? '오늘' : `${item.sparklineData!.length - 1 - index}일 전`
+      }))
+    : [];
+
+  const minVal = chartData.length > 0 ? Math.min(...chartData.map(d => d.value)) : 0;
+  const maxVal = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : 100;
+  
+  // Y축의 위아래에 약간의 여백을 둡니다.
+  const domainMin = minVal - (maxVal - minVal) * 0.1;
+  const domainMax = maxVal + (maxVal - minVal) * 0.1;
+
+  const isUp = (item.changeAmount || 0) >= 0;
+  const strokeColor = isUp ? 'var(--success-red)' : 'var(--danger-blue)';
+  // 그라데이션에 사용할 색상 (상승은 빨강 계열, 하락은 파랑 계열)
+  const gradientColor = isUp ? '#ef4444' : '#3b82f6'; 
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '600px', padding: '32px' }}>
+        <button className="modal-close" onClick={onClose}>×</button>
+        <h3 style={{ marginBottom: '8px', fontSize: '1.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>
+          {getEmoji(item.symbol)} {item.name} ({item.symbol})
+        </h3>
+        <p className="text-secondary" style={{ textAlign: 'center', marginBottom: '32px', fontSize: '0.9rem' }}>
+          최근 30일간의 추이입니다.
+        </p>
+
+        <div style={{ width: '100%', height: '300px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="colorIndicator" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={gradientColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={gradientColor} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="displayDate"
+                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                tickLine={false}
+                tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }}
+                interval={Math.floor(chartData.length / 5)} // 레이블이 겹치지 않게 간격을 둡니다.
+              />
+              <YAxis hide domain={[domainMin, domainMax]} />
+              <Tooltip
+                labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
+                contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
+                formatter={(value: any) => [`${value.toLocaleString()}`, '가격']}
+              />
+              {/* 배경 그라데이션 영역 */}
+              <Area type="monotone" dataKey="value" name="가격" stroke="none" fillOpacity={1} fill="url(#colorIndicator)" />
+              {/* 메인 선 */}
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={strokeColor}
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ r: 6, strokeWidth: 0, fill: strokeColor }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px 24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div className="text-secondary" style={{ fontSize: '0.85rem', marginBottom: '4px' }}>현재가</div>
+            <strong style={{ fontSize: '1.5rem', color: strokeColor }}>
+              {item.symbol.includes('KRW') || item.symbol === 'GC=F' || item.symbol === 'CL=F' || item.symbol === 'SI=F' || item.symbol === 'HG=F'
+                ? item.currentPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : item.currentPrice?.toLocaleString()}
+            </strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // 초기 진입 시 보여줄 항목들의 틀
@@ -60,6 +159,10 @@ export const IndexStatusSection = () => {
   // 접고 펴기 상태 추가
   const [indicesCollapsed, setIndicesCollapsed] = useState(false);
   const [ratesCollapsed, setRatesCollapsed] = useState(false);
+
+  // 모달 관련 상태 추가
+  const [selectedItem, setSelectedItem] = useState<IndicatorData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 데이터 가져오기 함수 (타입별)
   const fetchSectionData = async (type: 'indices' | 'rates' | 'all', ignoreCache = false) => {
@@ -146,9 +249,38 @@ export const IndexStatusSection = () => {
       {items.map((item) => {
         const isUp = (item.changeAmount || 0) >= 0;
         const colorClass = isUp ? 'text-success' : 'text-danger';
+        
+        // 변동률 색상과 일치시키기 위해 CSS 변수를 그대로 사용합니다.
+        const strokeColor = isUp ? 'var(--success-red)' : 'var(--danger-blue)';
+
+        // Recharts에서 사용할 수 있는 형태로 데이터 가공 (30일치)
+        const chartData = item.sparklineData 
+          ? item.sparklineData.map((val, idx) => ({ value: val }))
+          : [];
 
         return (
-          <div key={item.symbol} className="glass-panel hover-bright" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '10px', opacity: isSectionLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+          <div 
+            key={item.symbol} 
+            className="glass-panel hover-bright" 
+            style={{ 
+              padding: '16px', 
+              borderRadius: '12px', 
+              background: 'rgba(255,255,255,0.02)', 
+              border: '1px solid rgba(255,255,255,0.05)', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '12px', 
+              opacity: isSectionLoading ? 0.7 : 1, 
+              transition: 'opacity 0.2s', 
+              minHeight: '130px',
+              cursor: 'pointer' // 클릭 가능함을 알리기 위해 커서를 포인터로 설정합니다.
+            }}
+            onClick={() => {
+              setSelectedItem(item);
+              setIsModalOpen(true);
+            }}
+          >
+            {/* 상단: 이름 및 심볼 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '1.1rem' }}>{getEmoji(item.symbol)}</span>
               <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
@@ -159,23 +291,51 @@ export const IndexStatusSection = () => {
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 'auto' }}>에러: {item.error}</div>
             ) : (
               item.currentPrice === undefined ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: 'auto' }}>
-                  <div style={{ width: '100px', height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
-                  <div style={{ width: '60px', height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                /* 로딩 상태일 때의 스켈레톤 UI */
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ width: '100px', height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                    <div style={{ width: '60px', height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                  </div>
+                  <div style={{ width: '100px', height: '40px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
                 </div>
               ) : (
-                <>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff' }}>
-                    {item.symbol.includes('KRW') || item.symbol === 'GC=F' || item.symbol === 'CL=F' || item.symbol === 'SI=F' || item.symbol === 'HG=F'
-                      ? item.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                      : item.currentPrice.toLocaleString()}
+                /* 하단 컨텐츠 영역: 좌측(가격 정보), 우측(차트) */
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto' }}>
+                  {/* 좌측: 가격 및 변동률 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff' }}>
+                      {item.symbol.includes('KRW') || item.symbol === 'GC=F' || item.symbol === 'CL=F' || item.symbol === 'SI=F' || item.symbol === 'HG=F'
+                        ? item.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : item.currentPrice.toLocaleString()}
+                    </div>
+                    
+                    <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                      <span>{isUp ? '▲' : '▼'} {Math.abs(item.changeAmount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      <span>({isUp ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%)</span>
+                    </div>
                   </div>
-                  
-                  <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
-                    <span>{isUp ? '▲' : '▼'} {Math.abs(item.changeAmount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                    <span>({isUp ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%)</span>
-                  </div>
-                </>
+
+                  {/* 우측: 30일간의 간략한 차트 (스파크라인) */}
+                  {/* pointerEvents: 'none' 을 추가하여 카드 클릭 이벤트가 방해받지 않도록 합니다. */}
+                  {chartData.length > 0 && (
+                    <div style={{ width: '120px', height: '50px', pointerEvents: 'none' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData}>
+                          <YAxis domain={['auto', 'auto']} hide={true} />
+                          <Line 
+                            type="monotone" 
+                            dataKey="value" 
+                            stroke={strokeColor} 
+                            strokeWidth={2} 
+                            dot={false} 
+                            isAnimationActive={true} 
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
               )
             )}
           </div>
@@ -188,6 +348,11 @@ export const IndexStatusSection = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '60px', marginTop: '32px' }}>
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 0.3; }
+          100% { opacity: 0.6; }
+        }
       `}</style>
 
       {error && (
@@ -273,6 +438,15 @@ export const IndexStatusSection = () => {
         </div>
         {!ratesCollapsed && renderGrid(exchangeRates, ratesLoading || (loading && data[0].currentPrice === undefined))}
       </section>
+
+      {/* 팝업 모달 렌더링 */}
+      {selectedItem && (
+        <IndicatorDetailModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          item={selectedItem} 
+        />
+      )}
     </div>
   );
-};
+}

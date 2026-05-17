@@ -47,8 +47,9 @@ def main():
     results = []
     
     end_date = datetime.now()
-    # 최근 10일치 데이터를 가져와서 전일 대비 변동을 계산합니다.
-    start_date = end_date - timedelta(days=10)
+    # 최근 30일간의 데이터를 안정적으로 가져오기 위해 조회 기간을 45일로 늘립니다.
+    # 주말과 공휴일을 제외하고 최소 30개의 데이터를 확보하기 위함입니다.
+    start_date = end_date - timedelta(days=45)
 
     for symbol, name in symbols.items():
         try:
@@ -61,13 +62,16 @@ def main():
                 })
                 continue
                 
-            current_price = float(df.iloc[-1]['Close'])
+            # 최근 최대 30개의 데이터만 사용합니다. (팝업 차트용)
+            recent_df = df.tail(30)
+            
+            current_price = float(recent_df.iloc[-1]['Close'])
             
             # 전일 대비 변동률 및 변동액 계산
             change_percent = 0.0
             change_amount = 0.0
-            if len(df) > 1:
-                prev_price = float(df.iloc[-2]['Close'])
+            if len(recent_df) > 1:
+                prev_price = float(recent_df.iloc[-2]['Close'])
                 if prev_price > 0:
                     change_amount = current_price - prev_price
                     change_percent = (current_price / prev_price - 1.0) * 100.0
@@ -77,12 +81,22 @@ def main():
                 current_price *= 100
                 change_amount *= 100
                 
+            # 차트에 사용할 종가 데이터 리스트 생성 (30일치)
+            sparkline_data = recent_df['Close'].tolist()
+            
+            # 엔화 환율의 경우 차트 데이터도 100을 곱해줍니다.
+            if symbol == "JPY/KRW":
+                sparkline_data = [float(price) * 100 for price in sparkline_data]
+            else:
+                sparkline_data = [float(price) for price in sparkline_data]
+                
             results.append({
                 "symbol": symbol,
                 "name": name,
                 "currentPrice": current_price,
                 "changeAmount": change_amount,
-                "changePercent": change_percent
+                "changePercent": change_percent,
+                "sparklineData": sparkline_data # 30일간의 차트 데이터
             })
         except Exception as e:
             results.append({
