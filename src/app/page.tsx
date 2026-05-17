@@ -5,7 +5,7 @@ import { useState, useRef } from 'react';
 import { Asset, SortConfig } from '../types/portfolio';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useExchangeRate } from '../hooks/useExchangeRate';
-import { useCalculations } from '../hooks/useCalculations';
+import { useCalculations, getSortedAssets } from '../hooks/useCalculations';
 import { formatMoney, COLORS } from '../utils/format';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -84,39 +84,65 @@ export default function Home() {
 
     try {
       await fetchExchangeRate();
-      const allStockAssets: { pid: string, asset: Asset }[] = [];
+      
+      // 모든 계좌에서 종목별 자산 ID 매핑 (중복 업데이트용)
+      const codeToAssetIds: { [code: string]: string[] } = {};
       portfolios.forEach(p => {
         p.assets.forEach(a => {
           if (a.type === 'KR_STOCK' || a.type === 'US_STOCK') {
-            allStockAssets.push({ pid: p.id, asset: a });
+            if (!codeToAssetIds[a.code]) {
+              codeToAssetIds[a.code] = [a.id];
+            } else {
+              codeToAssetIds[a.code].push(a.id);
+            }
           }
         });
       });
 
-      const totalCount = allStockAssets.length;
+      // 화면에 보이는 순서(정렬 기준 적용)대로 고유 종목 리스트 생성
+      const stockList: { code: string, type: 'KR_STOCK' | 'US_STOCK', assetIds: string[] }[] = [];
+      const seenCodes = new Set<string>();
+
+      portfolios.forEach(p => {
+        // 현재 적용된 정렬 기준(sortConfig)으로 자산 정렬
+        const sortedAssets = getSortedAssets(p.assets, sortConfig);
+        
+        sortedAssets.forEach(a => {
+          if ((a.type === 'KR_STOCK' || a.type === 'US_STOCK') && !seenCodes.has(a.code)) {
+            seenCodes.add(a.code);
+            stockList.push({ code: a.code, type: a.type, assetIds: codeToAssetIds[a.code] });
+          }
+        });
+      });
+
+      const totalCount = stockList.length;
       if (totalCount === 0) { setLoading(false); return; }
 
-      setPendingStockIds(allStockAssets.map(item => item.asset.id));
+      // UI 표시를 위해 모든 자산 ID를 대기열에 추가
+      const allAssetIds = stockList.flatMap(s => s.assetIds);
+      setPendingStockIds(allAssetIds);
 
-      for (const item of allStockAssets) {
-        const { pid, asset } = item;
-        setRefreshingStockIds(prev => [...prev, asset.id]);
-        setPendingStockIds(prev => prev.filter(id => id !== asset.id));
+      for (const stock of stockList) {
+        // 해당 종목을 가진 모든 자산 ID를 로딩 상태로 변경
+        setRefreshingStockIds(prev => [...prev, ...stock.assetIds]);
+        setPendingStockIds(prev => prev.filter(id => !stock.assetIds.includes(id)));
 
-        const countryParam = asset.type === 'US_STOCK' ? 'US' : 'KR';
+        const countryParam = stock.type === 'US_STOCK' ? 'US' : 'KR';
         try {
-          const res = await fetch(`/api/stock?code=${encodeURIComponent(asset.code)}&country=${countryParam}`);
+          const res = await fetch(`/api/stock?code=${encodeURIComponent(stock.code)}&country=${countryParam}`);
           if (res.ok) {
             const data = await res.json();
-            setPortfolios(prev => prev.map(p => p.id === pid ? {
+            
+            // 모든 포트폴리오에서 동일한 코드를 가진 자산을 일괄 업데이트
+            setPortfolios(prev => prev.map(p => ({
               ...p,
-              assets: p.assets.map(a => a.id === asset.id ? { ...a, currentPrice: data.currentPrice, changePercent: data.changePercent } : a)
-            } : p));
+              assets: p.assets.map(a => a.code === stock.code ? { ...a, currentPrice: data.currentPrice, changePercent: data.changePercent } : a)
+            })));
           }
         } catch (err) {
-          console.error(`[${asset.code}] 업데이트 실패:`, err);
+          console.error(`[${stock.code}] 업데이트 실패:`, err);
         } finally {
-          setRefreshingStockIds(prev => prev.filter(id => id !== asset.id));
+          setRefreshingStockIds(prev => prev.filter(id => !stock.assetIds.includes(id)));
           setRefreshIndex(prev => prev + 1);
         }
       }
@@ -240,7 +266,7 @@ export default function Home() {
           exchangeRate={exchangeRate}
           loading={loading}
           refreshIndex={refreshIndex}
-          totalStockCount={portfolios.reduce((sum, p) => sum + p.assets.filter(a => a.type === 'KR_STOCK' || a.type === 'US_STOCK').length, 0)}
+          totalStockCount={new Set(portfolios.flatMap(p => p.assets.filter(a => a.type === 'KR_STOCK' || a.type === 'US_STOCK').map(a => a.code))).size}
           onRefreshPrices={handleRefreshPrices}
           onShowExchangeModal={() => setShowExchangeModal(true)}
         />
