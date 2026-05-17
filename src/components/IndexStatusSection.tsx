@@ -1,12 +1,226 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface IndicatorData {
+  symbol: string;
+  name: string;
+  currentPrice?: number;
+  changeAmount?: number;
+  changePercent?: number;
+  error?: string;
+}
+
+const getEmoji = (symbol: string) => {
+  if (symbol.startsWith('KS') || symbol.startsWith('KQ')) return '🇰🇷';
+  if (symbol.startsWith('US') || symbol.startsWith('IX') || symbol.startsWith('DJ')) return '🇺🇸';
+  if (symbol === 'USD/KRW') return '💵';
+  if (symbol === 'JPY/KRW') return '💴';
+  if (symbol === 'EUR/KRW') return '💶';
+  if (symbol === 'CNY/KRW') return '🇨🇳';
+  if (symbol === 'GC=F') return '🏅';
+  if (symbol === 'CL=F') return '🛢️';
+  if (symbol === 'SI=F') return '🥈';
+  if (symbol === 'HG=F') return '🥉';
+  if (symbol === 'BTC-USD') return '₿';
+  if (symbol === 'ETH-USD') return '⟠';
+  return '📈';
+};
+
+// 초기 진입 시 보여줄 항목들의 틀
+const initialData: IndicatorData[] = [
+  // 주요 지수
+  { symbol: "KS11", name: "코스피" },
+  { symbol: "KQ11", name: "코스닥" },
+  { symbol: "US500", name: "S&P 500" },
+  { symbol: "IXIC", name: "나스닥" },
+  { symbol: "DJI", name: "다우존스" },
+  { symbol: "CL=F", name: "WTI" },
+  { symbol: "BZ=F", name: "브렌트유" },
+  { symbol: "GC=F", name: "국제 금값" },
+  { symbol: "SI=F", name: "국제 은값" },
+  { symbol: "HG=F", name: "국제 구리값" },
+  { symbol: "BTC-USD", name: "비트코인" },
+  { symbol: "ETH-USD", name: "이더리움" },
+  
+  // 환율
+  { symbol: "USD/KRW", name: "원/달러 환율" },
+  { symbol: "EUR/KRW", name: "유로 (EUR/KRW)" },
+  { symbol: "JPY/KRW", name: "원/엔화 환율" },
+  { symbol: "CNY/KRW", name: "위안화 (CNY/KRW)" }
+];
+
 export const IndexStatusSection = () => {
+  const [data, setData] = useState<IndicatorData[]>(initialData);
+  const [loading, setLoading] = useState(true);
+  const [indicesLoading, setIndicesLoading] = useState(false);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // 데이터 가져오기 함수 (타입별)
+  const fetchSectionData = async (type: 'indices' | 'rates' | 'all', ignoreCache = false) => {
+    if (type === 'indices') setIndicesLoading(true);
+    if (type === 'rates') setRatesLoading(true);
+    if (type === 'all') setLoading(true);
+    
+    setError('');
+    try {
+      const url = type === 'all' ? '/api/indicators' : `/api/indicators?type=${type}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        
+        setData(prev => {
+          let newData: IndicatorData[];
+          if (type === 'all') {
+            newData = json;
+          } else {
+            // 기존 데이터와 병합 (해당 타입의 데이터만 교체)
+            newData = [...prev];
+            json.forEach((newItem: IndicatorData) => {
+              const idx = newData.findIndex(item => item.symbol === newItem.symbol);
+              if (idx >= 0) {
+                newData[idx] = newItem;
+              } else {
+                newData.push(newItem);
+              }
+            });
+          }
+          
+          // 로컬 스토리지에 캐시 저장 (5분 유효)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('indexStatusData', JSON.stringify(newData));
+            localStorage.setItem('indexStatusTimestamp', Date.now().toString());
+          }
+          
+          return newData;
+        });
+      } else {
+        setError('데이터를 불러오는데 실패했습니다.');
+      }
+    } catch (err) {
+      setError('서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      if (type === 'indices') setIndicesLoading(false);
+      if (type === 'rates') setRatesLoading(false);
+      if (type === 'all') setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // 마운트 시 캐시 확인
+    if (typeof window !== 'undefined') {
+      const cachedData = localStorage.getItem('indexStatusData');
+      const cachedTime = localStorage.getItem('indexStatusTimestamp');
+      
+      if (cachedData && cachedTime) {
+        const elapsed = Date.now() - parseInt(cachedTime, 10);
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        // 5분이 지나지 않았으면 캐시 데이터 사용
+        if (elapsed < fiveMinutes) {
+          setData(JSON.parse(cachedData));
+          setLoading(false);
+          return;
+        }
+      }
+    }
+    
+    // 캐시가 없거나 5분이 지났으면 새로 가져옴
+    fetchSectionData('all');
+  }, []);
+
+  // 환율 항목 정의 (필터링용)
+  const exchangeSymbols = ['USD/KRW', 'JPY/KRW', 'EUR/KRW', 'CNY/KRW'];
+  
+  // 데이터 분류
+  const mainIndices = data.filter(item => !exchangeSymbols.includes(item.symbol));
+  const exchangeRates = data.filter(item => exchangeSymbols.includes(item.symbol));
+
+  const renderGrid = (items: IndicatorData[], isSectionLoading: boolean) => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+      {items.map((item) => {
+        const isUp = (item.changeAmount || 0) >= 0;
+        const colorClass = isUp ? 'text-success' : 'text-danger';
+
+        return (
+          <div key={item.symbol} className="glass-panel hover-bright" style={{ padding: '20px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '12px', opacity: isSectionLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.2rem' }}>{getEmoji(item.symbol)}</span>
+              <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>{item.symbol}</span>
+            </div>
+            
+            {item.error ? (
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 'auto' }}>에러: {item.error}</div>
+            ) : (
+              item.currentPrice === undefined ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
+                  <div style={{ width: '120px', height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                  <div style={{ width: '80px', height: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>
+                    {item.symbol.includes('KRW') || item.symbol === 'GC=F' || item.symbol === 'CL=F' || item.symbol === 'SI=F' || item.symbol === 'HG=F'
+                      ? item.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                      : item.currentPrice.toLocaleString()}
+                  </div>
+                  
+                  <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 600 }}>
+                    <span>{isUp ? '▲' : '▼'} {Math.abs(item.changeAmount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span>({isUp ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%)</span>
+                  </div>
+                </>
+              )
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '60px', marginTop: '32px' }}>
-      <section className="glass-panel" style={{ padding: '40px', textAlign: 'center', minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '16px', fontWeight: 700 }}>📈 글로벌 지수 현황</h2>
-        <p className="text-secondary" style={{ fontSize: '1rem', lineHeight: '1.6' }}>
-          지수 데이터 연동 준비 중입니다.<br />
-          향후 S&P 500, 나스닥, 다우존스, 코스피, 원/달러 환율 추이 등을 이곳에서 한눈에 모니터링할 수 있도록 업데이트될 예정입니다.
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingBottom: '60px', marginTop: '32px' }}>
+
+      {error && (
+        <div className="glass-panel" style={{ padding: '20px', color: 'var(--text-danger)', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
+
+      <section>
+        <div className="flex-between" style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+            📊 주요 지수 및 자산
+          </h3>
+          <button 
+            className="glass-button" 
+            style={{ width: 'auto', padding: '6px 14px', fontSize: '0.85rem', borderRadius: '8px' }}
+            onClick={() => fetchSectionData('indices', true)}
+            disabled={indicesLoading || loading}
+          >
+            {indicesLoading ? '로딩 중...' : '🔄 새로고침'}
+          </button>
+        </div>
+        {renderGrid(mainIndices, indicesLoading || (loading && data[0].currentPrice === undefined))}
+      </section>
+
+      <section>
+        <div className="flex-between" style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+            💱 실시간 환율
+          </h3>
+          <button 
+            className="glass-button" 
+            style={{ width: 'auto', padding: '6px 14px', fontSize: '0.85rem', borderRadius: '8px' }}
+            onClick={() => fetchSectionData('rates', true)}
+            disabled={ratesLoading || loading}
+          >
+            {ratesLoading ? '로딩 중...' : '🔄 새로고침'}
+          </button>
+        </div>
+        {renderGrid(exchangeRates, ratesLoading || (loading && data[0].currentPrice === undefined))}
       </section>
     </div>
   );
