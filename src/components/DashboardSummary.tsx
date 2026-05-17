@@ -59,11 +59,28 @@ export const DashboardSummary = ({
           >
             <span style={{ color: '#3b82f6' }}>●</span> 환율: 1 USD = {exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KRW
           </div>
-          <button className="glass-button" style={{ width: 'auto', padding: '8px 20px', fontSize: '0.875rem', borderRadius: '12px' }} onClick={onRefreshPrices} disabled={loading}>
-            {loading ? `업데이트 중... (${refreshIndex} / ${totalStockCount})` : '🔄 시세 새로고침'}
+          <button className="glass-button" style={{ width: 'auto', padding: '8px 20px', fontSize: '0.875rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={onRefreshPrices} disabled={loading}>
+            <svg 
+              width="16" height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}
+            >
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            {loading ? `업데이트 중... (${refreshIndex} / ${totalStockCount})` : '시세 새로고침'}
           </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}</style>
 
       <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>

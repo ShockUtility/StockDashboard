@@ -57,6 +57,10 @@ export const IndexStatusSection = () => {
   const [ratesLoading, setRatesLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 접고 펴기 상태 추가
+  const [indicesCollapsed, setIndicesCollapsed] = useState(false);
+  const [ratesCollapsed, setRatesCollapsed] = useState(false);
+
   // 데이터 가져오기 함수 (타입별)
   const fetchSectionData = async (type: 'indices' | 'rates' | 'all', ignoreCache = false) => {
     if (type === 'indices') setIndicesLoading(true);
@@ -138,36 +142,36 @@ export const IndexStatusSection = () => {
   const exchangeRates = data.filter(item => exchangeSymbols.includes(item.symbol));
 
   const renderGrid = (items: IndicatorData[], isSectionLoading: boolean) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
       {items.map((item) => {
         const isUp = (item.changeAmount || 0) >= 0;
         const colorClass = isUp ? 'text-success' : 'text-danger';
 
         return (
-          <div key={item.symbol} className="glass-panel hover-bright" style={{ padding: '20px', borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '12px', opacity: isSectionLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+          <div key={item.symbol} className="glass-panel hover-bright" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '10px', opacity: isSectionLoading ? 0.7 : 1, transition: 'opacity 0.2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.2rem' }}>{getEmoji(item.symbol)}</span>
-              <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>{item.symbol}</span>
+              <span style={{ fontSize: '1.1rem' }}>{getEmoji(item.symbol)}</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>{item.symbol}</span>
             </div>
             
             {item.error ? (
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 'auto' }}>에러: {item.error}</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 'auto' }}>에러: {item.error}</div>
             ) : (
               item.currentPrice === undefined ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
-                  <div style={{ width: '120px', height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
-                  <div style={{ width: '80px', height: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: 'auto' }}>
+                  <div style={{ width: '100px', height: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
+                  <div style={{ width: '60px', height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }}></div>
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff' }}>
                     {item.symbol.includes('KRW') || item.symbol === 'GC=F' || item.symbol === 'CL=F' || item.symbol === 'SI=F' || item.symbol === 'HG=F'
                       ? item.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                       : item.currentPrice.toLocaleString()}
                   </div>
                   
-                  <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 600 }}>
+                  <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
                     <span>{isUp ? '▲' : '▼'} {Math.abs(item.changeAmount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     <span>({isUp ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%)</span>
                   </div>
@@ -181,7 +185,10 @@ export const IndexStatusSection = () => {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingBottom: '60px', marginTop: '32px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '60px', marginTop: '32px' }}>
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}</style>
 
       {error && (
         <div className="glass-panel" style={{ padding: '20px', color: 'var(--text-danger)', textAlign: 'center' }}>
@@ -189,38 +196,82 @@ export const IndexStatusSection = () => {
         </div>
       )}
 
-      <section>
-        <div className="flex-between" style={{ marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-            📊 주요 지수 및 자산
-          </h3>
+      {/* 주요 지수 및 자산 섹션 */}
+      <section className="glass-panel">
+        <div className="flex-between" style={{ marginBottom: indicesCollapsed ? '0' : '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              onClick={() => setIndicesCollapsed(!indicesCollapsed)}
+              style={{ fontSize: '1.2rem', transform: indicesCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', cursor: 'pointer', color: 'var(--text-secondary)' }}
+            >
+              ▼
+            </span>
+            <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              📊 주요 지수 및 자산
+            </h3>
+          </div>
           <button 
             className="glass-button" 
-            style={{ width: 'auto', padding: '6px 14px', fontSize: '0.85rem', borderRadius: '8px' }}
+            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}
             onClick={() => fetchSectionData('indices', true)}
             disabled={indicesLoading || loading}
+            title="새로고침"
           >
-            {indicesLoading ? '로딩 중...' : '🔄 새로고침'}
+            <svg 
+              width="16" height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              style={{ animation: indicesLoading ? 'spin 1s linear infinite' : 'none' }}
+            >
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
           </button>
         </div>
-        {renderGrid(mainIndices, indicesLoading || (loading && data[0].currentPrice === undefined))}
+        {!indicesCollapsed && renderGrid(mainIndices, indicesLoading || (loading && data[0].currentPrice === undefined))}
       </section>
 
-      <section>
-        <div className="flex-between" style={{ marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-            💱 실시간 환율
-          </h3>
+      {/* 실시간 환율 섹션 */}
+      <section className="glass-panel">
+        <div className="flex-between" style={{ marginBottom: ratesCollapsed ? '0' : '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              onClick={() => setRatesCollapsed(!ratesCollapsed)}
+              style={{ fontSize: '1.2rem', transform: ratesCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', cursor: 'pointer', color: 'var(--text-secondary)' }}
+            >
+              ▼
+            </span>
+            <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              💱 실시간 환율
+            </h3>
+          </div>
           <button 
             className="glass-button" 
-            style={{ width: 'auto', padding: '6px 14px', fontSize: '0.85rem', borderRadius: '8px' }}
+            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}
             onClick={() => fetchSectionData('rates', true)}
             disabled={ratesLoading || loading}
+            title="새로고침"
           >
-            {ratesLoading ? '로딩 중...' : '🔄 새로고침'}
+            <svg 
+              width="16" height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              style={{ animation: ratesLoading ? 'spin 1s linear infinite' : 'none' }}
+            >
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
           </button>
         </div>
-        {renderGrid(exchangeRates, ratesLoading || (loading && data[0].currentPrice === undefined))}
+        {!ratesCollapsed && renderGrid(exchangeRates, ratesLoading || (loading && data[0].currentPrice === undefined))}
       </section>
     </div>
   );
