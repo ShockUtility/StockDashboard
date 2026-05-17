@@ -370,7 +370,10 @@ export default function Home() {
       )}
 
       {activeMainTab === 'INDEX' && (
-        <IndexStatusSection />
+        <IndexStatusSection 
+          externalExchangeRate={exchangeRate} 
+          onRefreshExchangeRate={fetchExchangeRate} 
+        />
       )}
 
       {activeMainTab === 'NEWS' && (

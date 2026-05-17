@@ -19,6 +19,12 @@ interface IndicatorData {
   sparklineData?: SparklinePoint[]; // 날짜와 값이 포함된 데이터 타입
 }
 
+// 상위 컴포넌트(page.tsx)로부터 환율 데이터와 갱신 함수를 받기 위한 인터페이스입니다.
+interface IndexStatusSectionProps {
+  externalExchangeRate?: number; // 전체자산요약에서 사용하는 달러 환율
+  onRefreshExchangeRate?: () => void; // 달러 환율을 갱신하는 함수
+}
+
 // 심볼에 맞는 이모지(국기 또는 아이콘)를 반환하는 함수입니다.
 const getEmoji = (symbol: string) => {
   if (symbol.startsWith('KS') || symbol.startsWith('KQ')) return '🇰🇷';
@@ -69,7 +75,6 @@ const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalPro
   const minVal = chartData.length > 0 ? Math.min(...chartData.map(d => d.value)) : 0;
   const maxVal = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : 100;
   
-  // Y축의 위아래에 약간의 여백을 둡니다.
   const domainMin = minVal - (maxVal - minVal) * 0.1;
   const domainMax = maxVal + (maxVal - minVal) * 0.1;
 
@@ -108,16 +113,12 @@ const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalPro
               <Tooltip
                 labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '0.85rem' }}
                 contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
-                // formatter를 수정하여 가격이 두 번 표기되는 현상을 해결합니다.
                 formatter={(value: any, name: any) => {
-                  // 배경을 채우는 Area(가격영역)는 툴팁에서 제외합니다.
                   if (name === '가격영역') return [null, null];
                   return [`${value.toLocaleString()}`, '가격'];
                 }}
               />
-              {/* 배경 그라데이션 영역: 이름을 '가격영역'으로 지정하여 툴팁에서 걸러냅니다. */}
               <Area type="monotone" dataKey="value" name="가격영역" stroke="none" fillOpacity={1} fill="url(#colorIndicator)" />
-              {/* 메인 선: 이름을 '가격'으로 지정하여 이것만 툴팁에 나오게 합니다. */}
               <Line
                 type="monotone"
                 dataKey="value"
@@ -169,7 +170,7 @@ const initialData: IndicatorData[] = [
   { symbol: "CNY/KRW", name: "위안화 (CNY/KRW)" }
 ];
 
-export const IndexStatusSection = () => {
+export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate }: IndexStatusSectionProps) => {
   const [data, setData] = useState<IndicatorData[]>(initialData);
   const [loading, setLoading] = useState(true);
   const [indicesLoading, setIndicesLoading] = useState(false);
@@ -271,8 +272,13 @@ export const IndexStatusSection = () => {
         const colorClass = isUp ? 'text-success' : 'text-danger';
         const strokeColor = isUp ? 'var(--success-red)' : 'var(--danger-blue)';
 
-        // 지수 카드의 미니 차트용 데이터는 이미 객체 배열이므로 그대로 사용합니다.
         const chartData = item.sparklineData || [];
+
+        // 달러 환율(USD/KRW)인 경우, 외부에서 전달받은 환율이 있다면 그것을 우선 사용합니다.
+        let displayPrice = item.currentPrice;
+        if (item.symbol === 'USD/KRW' && externalExchangeRate) {
+          displayPrice = externalExchangeRate;
+        }
 
         return (
           <div 
@@ -292,7 +298,9 @@ export const IndexStatusSection = () => {
               cursor: 'pointer'
             }}
             onClick={() => {
-              setSelectedItem(item);
+              // 모달을 띄울 때도 동기화된 가격을 반영하여 보여줍니다.
+              const itemWithSyncPrice = { ...item, currentPrice: displayPrice };
+              setSelectedItem(itemWithSyncPrice);
               setIsModalOpen(true);
             }}
           >
@@ -306,7 +314,7 @@ export const IndexStatusSection = () => {
             {item.error ? (
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 'auto' }}>에러: {item.error}</div>
             ) : (
-              item.currentPrice === undefined ? (
+              displayPrice === undefined ? (
                 /* 로딩 상태일 때의 스켈레톤 UI */
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -322,8 +330,8 @@ export const IndexStatusSection = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#fff' }}>
                       {item.symbol.includes('KRW') || item.symbol === 'GC=F' || item.symbol === 'CL=F' || item.symbol === 'SI=F' || item.symbol === 'HG=F'
-                        ? item.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                        : item.currentPrice.toLocaleString()}
+                        ? displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : displayPrice.toLocaleString()}
                     </div>
                     
                     <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
@@ -432,7 +440,13 @@ export const IndexStatusSection = () => {
           <button 
             className="glass-button" 
             style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}
-            onClick={() => fetchSectionData('rates', true)}
+            onClick={() => {
+              fetchSectionData('rates', true);
+              // 환율 섹션을 새로고침할 때 상단 요약의 환율도 함께 갱신합니다.
+              if (onRefreshExchangeRate) {
+                onRefreshExchangeRate();
+              }
+            }}
             disabled={ratesLoading || loading}
             title="새로고침"
           >
