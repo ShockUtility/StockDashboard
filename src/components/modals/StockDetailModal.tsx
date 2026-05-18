@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { useState, useEffect } from 'react';
-import { AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, Bar, ReferenceLine } from 'recharts';
+import { AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ComposedChart, Bar, ReferenceLine, BarChart, CartesianGrid, Legend } from 'recharts';
 import { StockDetailModalProps } from '../../types/portfolio';
 import { formatMoney, formatDateLabel } from '../../utils/format';
 
@@ -11,6 +11,22 @@ interface NewsItem {
   pubDate: Date;
   pubDateStr: string;
   source: string;
+}
+
+// 분석 데이터의 타입을 정의합니다.
+interface AnalysisData {
+  marketCap?: number;
+  per?: number;
+  pbr?: number;
+  eps?: number;
+  dividendYield?: number;
+  currency?: string;
+  financials?: {
+    year: string;
+    revenue?: number;
+    operatingIncome?: number;
+    netIncome?: number;
+  }[];
 }
 
 export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockDetailModalProps) => {
@@ -24,6 +40,10 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
   // 뉴스 관련 상태
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loadingNews, setLoadingNews] = useState(false);
+
+  // 분석 자료 관련 상태
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
   // 차트 데이터를 가져오는 Effect
   useEffect(() => {
@@ -112,10 +132,28 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
     }
   };
 
-  // [버그 수정] 종목이 바뀌면 기존 뉴스 데이터를 비워줍니다.
-  // 이렇게 해야 다른 종목을 클릭했을 때 이전 종목의 뉴스가 잠깐 보이는 현상을 막고 새로 데이터를 불러옵니다.
+  // 분석 자료를 가져오는 함수
+  const fetchStockAnalysis = async (code: string) => {
+    setLoadingAnalysis(true);
+    try {
+      const res = await fetch(`/api/stock-analysis?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setAnalysisData(data);
+      } else {
+        console.error('Fetch analysis error:', data.error);
+      }
+    } catch (err) {
+      console.error('Fetch analysis network error:', err);
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  };
+
+  // 종목이 바뀌면 기존 뉴스 및 분석 데이터를 비워줍니다.
   useEffect(() => {
     setNews([]);
+    setAnalysisData(null);
   }, [asset?.code]);
 
   // 뉴스 탭이 선택되었을 때 뉴스를 불러옵니다.
@@ -123,7 +161,14 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
     if (isOpen && activeTab === 'news' && asset && news.length === 0) {
       fetchNews(asset.name);
     }
-  }, [isOpen, activeTab, asset, news.length]); // news.length를 의존성에 추가하여 상태가 비워졌을 때 다시 호출되도록 합니다.
+  }, [isOpen, activeTab, asset, news.length]);
+
+  // 정보 탭이 선택되었을 때 분석 자료를 불러옵니다.
+  useEffect(() => {
+    if (isOpen && activeTab === 'info' && asset && !analysisData) {
+      fetchStockAnalysis(asset.code);
+    }
+  }, [isOpen, activeTab, asset, analysisData]);
 
   if (!isOpen || !asset) return null;
 
@@ -136,6 +181,25 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
   const allValues = prices.length > 0 ? prices : [asset.avgPrice];
   const minPrice = Math.min(...allValues) * 0.99;
   const maxPrice = Math.max(...allValues) * 1.01;
+
+  // 큰 숫자를 한글 단위(조, 억)로 포맷팅하는 함수
+  const formatLargeNumber = (num?: number) => {
+    if (num === undefined || num === null) return '-';
+
+    // 조 단위
+    if (num >= 1e12) {
+      return `${(num / 1e12).toFixed(1)}조`;
+    }
+    // 억 단위
+    if (num >= 1e8) {
+      return `${(num / 1e8).toFixed(1)}억`;
+    }
+    // 만 단위
+    if (num >= 1e4) {
+      return `${(num / 1e4).toFixed(1)}만`;
+    }
+    return num.toLocaleString();
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -224,7 +288,7 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
 
         {/* 탭 내용 영역: 사용자가 460px로 줄인 높이를 유지합니다. */}
         <div style={{ height: '460px', overflowY: 'auto', paddingRight: '12px' }}>
-          
+
           {/* 차트 탭 */}
           {activeTab === 'chart' && (
             <>
@@ -371,12 +435,127 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
             </>
           )}
 
-          {/* 정보 탭 */}
+          {/* [NEW] 정보 탭: 재무분석 자료 그리드 및 비교 차트 */}
           {activeTab === 'info' && (
-            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)' }}>
-              <div className="text-secondary" style={{ fontSize: '1rem' }}>
-                ℹ️ 정보 탭은 나중에 구현될 예정입니다. (공간 확보)
-              </div>
+            <div style={{ width: '100%', minHeight: '100%', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+              {loadingAnalysis ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: 'var(--text-secondary)' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: '30px', height: '30px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px auto' }}></div>
+                    분석 자료를 불러오는 중...
+                  </div>
+                </div>
+              ) : analysisData ? (
+                <>
+                  {/* 주요 투자 지표 그리드 */}
+                  <div>
+                    <h4 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'var(--accent-blue)' }}>주요 투자 지표</h4>
+                    {/* [수정] 1줄에 다 들어가도록 repeat(5, 1fr)로 변경하고 gap과 패딩을 줄였습니다. */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>시가총액</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{formatLargeNumber(analysisData.marketCap)}</div>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>PER</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{analysisData.per ? analysisData.per.toFixed(2) : '-'}</div>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>PBR</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{analysisData.pbr ? analysisData.pbr.toFixed(2) : '-'}</div>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>EPS</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{analysisData.eps ? analysisData.eps.toFixed(2) : '-'}</div>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>배당수익률</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#10b981' }}>
+                          {analysisData.dividendYield ? `${analysisData.dividendYield.toFixed(2)}%` : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 재무제표 요약 테이블 */}
+                  {analysisData.financials && analysisData.financials.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'var(--accent-blue)' }}>최근 3개년 재무분석</h4>
+                      <div style={{ overflowX: 'auto', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                              <th style={{ padding: '10px', textAlign: 'left', color: 'var(--text-secondary)' }}>구분</th>
+                              {analysisData.financials.map(f => (
+                                <th key={f.year} style={{ padding: '10px', textAlign: 'center' }}>{f.year}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              <td style={{ padding: '10px', fontWeight: 600 }}>매출액</td>
+                              {analysisData.financials.map(f => (
+                                <td key={f.year} style={{ padding: '10px', textAlign: 'center' }}>{formatLargeNumber(f.revenue)}</td>
+                              ))}
+                            </tr>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                              <td style={{ padding: '10px', fontWeight: 600 }}>영업이익</td>
+                              {analysisData.financials.map(f => (
+                                <td key={f.year} style={{ padding: '10px', textAlign: 'center' }}>{formatLargeNumber(f.operatingIncome)}</td>
+                              ))}
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '10px', fontWeight: 600 }}>순이익</td>
+                              {analysisData.financials.map(f => (
+                                <td key={f.year} style={{ padding: '10px', textAlign: 'center' }}>{formatLargeNumber(f.netIncome)}</td>
+                              ))}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 재무제표 비교 차트 */}
+                  {analysisData.financials && analysisData.financials.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'var(--accent-blue)' }}>재무 추이 비교</h4>
+                      <div style={{ width: '100%', height: '220px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', padding: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={analysisData.financials}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                            <XAxis dataKey="year" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                            <YAxis
+                              tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
+                              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                              tickFormatter={(val) => formatLargeNumber(val)}
+                            />
+                            <Tooltip
+                              contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                              formatter={(value: any) => [formatLargeNumber(Number(value)), '']}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                            <Bar dataKey="revenue" fill="#3b82f6" name="매출액" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="operatingIncome" fill="#10b981" name="영업이익" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="netIncome" fill="#ef4444" name="순이익" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px', color: 'var(--text-secondary)' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>❌</span>
+                    분석 자료를 가져오지 못했습니다.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -393,19 +572,19 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
                   </div>
                 ) : news.length > 0 ? (
                   news.map((item, idx) => (
-                    <a 
-                      key={idx} 
-                      href={item.link} 
-                      target="_blank" 
+                    <a
+                      key={idx}
+                      href={item.link}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="hover-bright"
-                      style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: '6px', 
-                        padding: '12px 16px', 
-                        background: 'rgba(255,255,255,0.02)', 
-                        borderRadius: '12px', 
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        padding: '12px 16px',
+                        background: 'rgba(255,255,255,0.02)',
+                        borderRadius: '12px',
                         border: '1px solid rgba(255,255,255,0.05)',
                         textDecoration: 'none',
                         transition: 'all 0.2s'
