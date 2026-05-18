@@ -70,7 +70,11 @@ export function useCalculations(portfolios: Portfolio[], exchangeRate: number) {
   return { totals };
 }
 
-export function getSortedAssets(assets: Asset[], config: SortConfig | null): Asset[] {
+// [교육용 설명]
+// 정렬 함수에 exchangeRate(환율) 파라미터를 추가했습니다.
+// 이제 미국 주식의 경우 환율을 적용하여 원화로 환산한 뒤 비교하므로,
+// 한국 주식과 미국 주식이 올바른 가치 기준으로 정렬됩니다.
+export function getSortedAssets(assets: Asset[], config: SortConfig | null, exchangeRate: number): Asset[] {
   return [...assets].sort((a, b) => {
     const getPriority = (type: Asset['type']) => {
       if (type === 'KR_STOCK' || type === 'US_STOCK') return 1;
@@ -89,8 +93,18 @@ export function getSortedAssets(assets: Asset[], config: SortConfig | null): Ass
     if (!config) return 0;
     const { key, direction } = config;
     let aVal: any = 0; let bVal: any = 0;
-    const aInvest = a.avgPrice * a.quantity; const bInvest = b.avgPrice * b.quantity;
-    const aCurrent = a.currentPrice * a.quantity; const bCurrent = b.currentPrice * b.quantity;
+
+    // 각 자산의 통화에 맞는 환율을 적용합니다.
+    const aRate = a.currency === 'USD' ? exchangeRate : 1;
+    const bRate = b.currency === 'USD' ? exchangeRate : 1;
+    
+    // [교육용 설명]
+    // 이전에는 환율을 곱하지 않아 1000달러가 100000원보다 작게 인식되었으나,
+    // 이제는 환율(예: 1300원)을 곱한 원화 환산 금액으로 정합성 있게 비교합니다.
+    const aInvest = (a.avgPrice * a.quantity) * aRate;
+    const bInvest = (b.avgPrice * b.quantity) * bRate;
+    const aCurrent = (a.currentPrice * a.quantity) * aRate;
+    const bCurrent = (b.currentPrice * b.quantity) * bRate;
     
     switch (key) {
       case 'name': aVal = a.name; bVal = b.name; break;

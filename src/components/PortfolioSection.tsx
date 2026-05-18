@@ -52,7 +52,9 @@ export const PortfolioSection = ({
   });
 
   const pReturnAmount = pStockCurrentKRW - pInvestKRW;
-  const sortedAssets = getSortedAssets(portfolio.assets, sortConfig);
+  
+  // [교육용 설명] getSortedAssets 호출 시 exchangeRate(환율)를 인자로 추가했습니다.
+  const sortedAssets = getSortedAssets(portfolio.assets, sortConfig, exchangeRate);
 
   const handleSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';

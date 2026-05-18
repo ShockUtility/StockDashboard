@@ -119,7 +119,8 @@ export default function Home() {
       const seenCodes = new Set<string>();
 
       portfolios.forEach(p => {
-        const sortedAssets = getSortedAssets(p.assets, sortConfig);
+        // [교육용 설명] getSortedAssets 호출 시 exchangeRate를 넘겨주도록 수정했습니다.
+        const sortedAssets = getSortedAssets(p.assets, sortConfig, exchangeRate);
 
         sortedAssets.forEach(a => {
           if ((a.type === 'KR_STOCK' || a.type === 'US_STOCK') && !seenCodes.has(a.code)) {

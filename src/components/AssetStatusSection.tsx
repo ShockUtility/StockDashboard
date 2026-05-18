@@ -49,8 +49,9 @@ export const AssetStatusSection = ({
     });
   });
 
-  const aggregatedUSStocks = getSortedAssets(Object.values(usStocks), assetSortConfig);
-  const aggregatedKRStocks = getSortedAssets(Object.values(krStocks), assetSortConfig);
+  // [교육용 설명] getSortedAssets 호출 시 exchangeRate(환율)를 인자로 추가했습니다.
+  const aggregatedUSStocks = getSortedAssets(Object.values(usStocks), assetSortConfig, exchangeRate);
+  const aggregatedKRStocks = getSortedAssets(Object.values(krStocks), assetSortConfig, exchangeRate);
 
   const totalUSInvest = aggregatedUSStocks.reduce((sum, s) => sum + (s.avgPrice * s.quantity), 0);
   const totalUSCurrent = aggregatedUSStocks.reduce((sum, s) => sum + (s.currentPrice * s.quantity), 0);
