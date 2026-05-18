@@ -2,6 +2,7 @@ import sys
 import json
 import FinanceDataReader as fdr
 from datetime import datetime, timedelta
+import math
 
 def main():
     # 사용자가 요청한 전체 지수 및 자산 목록
@@ -63,7 +64,14 @@ def main():
                 continue
                 
             # 최근 최대 30개의 데이터만 사용합니다.
-            recent_df = df.tail(30)
+            recent_df = df.tail(30).copy()
+            
+            # [교육용 주석] 데이터 중 결측치(NaN)가 있으면 직전 날짜의 정상 데이터로 채웁니다.
+            # 이 부분이 추가되어 JSON 파싱 에러를 방지합니다.
+            recent_df['Close'] = recent_df['Close'].ffill()
+            
+            # [교육용 주석] 만약 첫 번째 데이터부터 비어있어서 ffill로 안 채워지면 0으로 채웁니다.
+            recent_df['Close'] = recent_df['Close'].fillna(0)
             
             current_price = float(recent_df.iloc[-1]['Close'])
             
