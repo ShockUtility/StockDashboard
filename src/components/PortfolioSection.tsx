@@ -152,7 +152,7 @@ export const PortfolioSection = ({
             <table className="glass-table">
               <thead>
                 <tr>
-                  <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleSort('name')}>종목명 {renderSortIcon('name')}</th>
+                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleSort('name')}>종목명 {renderSortIcon('name')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('quantity')}>수량 {renderSortIcon('quantity')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('avgPrice')}>평균단가 {renderSortIcon('avgPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('currentPrice')}>현재가 {renderSortIcon('currentPrice')}</th>
@@ -194,7 +194,7 @@ export const PortfolioSection = ({
                               {asset.type === 'KR_STOCK' || asset.type === 'US_STOCK' ? (
                                 <strong
                                   onClick={() => onShowDetail(asset)}
-                                  style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', cursor: 'pointer', color: '#a78bfa', textDecoration: 'underline' }}
+                                  style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px', cursor: 'pointer', color: '#a78bfa', textDecoration: 'underline' }}
                                 >
                                   {asset.name}
                                 </strong>

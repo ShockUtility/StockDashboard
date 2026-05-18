@@ -129,9 +129,9 @@ export const AssetStatusSection = ({
             <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleAssetSort('name')}>종목명 {renderAssetSortIcon('name')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>보유 수량 {renderAssetSortIcon('quantity')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>가중 평균단가 {renderAssetSortIcon('avgPrice')}</th>
+                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleAssetSort('name')}>종목명 {renderAssetSortIcon('name')}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>수량 {renderAssetSortIcon('quantity')}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>평균단가 {renderAssetSortIcon('avgPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (USD) {renderAssetSortIcon('investment')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (USD) {renderAssetSortIcon('current')}</th>
@@ -153,7 +153,7 @@ export const AssetStatusSection = ({
                       <tr key={stock.code} className="hover-dim">
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => onShowDetail(stock)} className="clickable-stock-name">
-                            <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
+                            <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
                           </div>
                         </td>
@@ -239,8 +239,8 @@ export const AssetStatusSection = ({
             <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleAssetSort('name')}>종목명 / 코드 {renderAssetSortIcon('name')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>보유 수량 {renderAssetSortIcon('quantity')}</th>
+                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleAssetSort('name')}>종목명 {renderAssetSortIcon('name')}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>수량 {renderAssetSortIcon('quantity')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>가중 평균단가 {renderAssetSortIcon('avgPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (KRW) {renderAssetSortIcon('investment')}</th>
@@ -263,7 +263,7 @@ export const AssetStatusSection = ({
                       <tr key={stock.code} className="hover-dim">
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => onShowDetail(stock)} className="clickable-stock-name">
-                            <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
+                            <strong style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px', color: '#a78bfa', textDecoration: 'underline' }}>{stock.name}</strong>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{stock.code}</div>
                           </div>
                         </td>

@@ -7,8 +7,10 @@
   --text-secondary: #94a3b8;
   --accent-blue: #3b82f6;
   --accent-purple: #8b5cf6;
-  --success-red: #ef4444; /* 한국식 상승/수익: 빨강 */
-  --danger-blue: #3b82f6;  /* 한국식 하락/손실: 파랑 */
+  --success-red: #ef4444;
+  /* 한국식 상승/수익: 빨강 */
+  --danger-blue: #3b82f6;
+  /* 한국식 하락/손실: 파랑 */
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -47,7 +49,9 @@ body {
 }
 
 /* Typography */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   font-weight: 700;
   letter-spacing: -0.025em;
   margin-bottom: 16px;
@@ -113,9 +117,17 @@ h1, h2, h3 {
 }
 
 /* Utilities */
-.text-success { color: var(--success-red); }
-.text-danger { color: var(--danger-blue); }
-.text-secondary { color: var(--text-secondary); }
+.text-success {
+  color: var(--success-red);
+}
+
+.text-danger {
+  color: var(--danger-blue);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
 
 .flex-between {
   display: flex;
@@ -134,13 +146,15 @@ h1, h2, h3 {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.05); /* 헤더/푸터 배경색과 일치시켜 빈틈 방지 */
+  background: rgba(255, 255, 255, 0.05);
+  /* 헤더/푸터 배경색과 일치시켜 빈틈 방지 */
 }
 
 .glass-table {
   width: 100%;
-  min-width: 1200px;
-  border-collapse: collapse; /* 틈새 방지를 위해 다시 collapse로 복구 */
+  min-width: 800px;
+  border-collapse: collapse;
+  /* 틈새 방지를 위해 다시 collapse로 복구 */
   text-align: left;
   font-size: 0.875rem;
   table-layout: auto;
@@ -167,7 +181,8 @@ h1, h2, h3 {
 
 .glass-table thead th,
 .glass-table tfoot td {
-  background: inherit; /* 부모 tr의 배경색 상속 */
+  background: inherit;
+  /* 부모 tr의 배경색 상속 */
 }
 
 /* 홀수/짝수 줄 배경색 구분 */
@@ -271,28 +286,28 @@ h1, h2, h3 {
   main {
     padding: 20px 12px !important;
   }
-  
+
   .glass-panel {
     padding: 20px !important;
   }
-  
+
   h1 {
     font-size: 1.8rem !important;
   }
-  
+
   /* 요약 카드 그리드 조정 */
   .summary-cards {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
-  
+
   /* 하단 현금 현황 조정 */
   .cash-details {
     flex-direction: column !important;
     gap: 20px !important;
   }
-  
-  .cash-details > div {
+
+  .cash-details>div {
     width: 100%;
   }
 
@@ -320,7 +335,7 @@ h1, h2, h3 {
     width: 100%;
     justify-content: space-between !important;
   }
-  
+
   .portfolio-header .stat-badge {
     padding: 8px 16px !important;
     flex: 1;
@@ -328,7 +343,8 @@ h1, h2, h3 {
   }
 
   /* 테이블 폰트 축소 */
-  .glass-table th, .glass-table td {
+  .glass-table th,
+  .glass-table td {
     font-size: 0.75rem !important;
     padding: 10px 8px !important;
   }
@@ -361,9 +377,13 @@ h1, h2, h3 {
 }
 
 @keyframes fadeIn {
-  to { opacity: 1; }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleUp {
-  to { transform: scale(1); }
+  to {
+    transform: scale(1);
+  }
 }
