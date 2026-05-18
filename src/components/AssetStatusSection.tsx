@@ -13,7 +13,9 @@ interface AssetStatusSectionProps {
 export const AssetStatusSection = ({
   portfolios, exchangeRate, onShowPieChart, onShowDetail
 }: AssetStatusSectionProps) => {
-  const [assetSortConfig, setAssetSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
+  // [교육용 설명] 미국 주식과 한국 주식 테이블 각각 독립된 정렬 상태를 가집니다
+  const [usSortConfig, setUsSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
+  const [krSortConfig, setKrSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
   const [collapsedUS, setCollapsedUS] = useState(false);
   const [collapsedKR, setCollapsedKR] = useState(false);
 
@@ -50,8 +52,8 @@ export const AssetStatusSection = ({
   });
 
   // [교육용 설명] getSortedAssets 호출 시 exchangeRate(환율)를 인자로 추가했습니다.
-  const aggregatedUSStocks = getSortedAssets(Object.values(usStocks), assetSortConfig, exchangeRate);
-  const aggregatedKRStocks = getSortedAssets(Object.values(krStocks), assetSortConfig, exchangeRate);
+  const aggregatedUSStocks = getSortedAssets(Object.values(usStocks), usSortConfig, exchangeRate);
+  const aggregatedKRStocks = getSortedAssets(Object.values(krStocks), krSortConfig, exchangeRate);
 
   const totalUSInvest = aggregatedUSStocks.reduce((sum, s) => sum + (s.avgPrice * s.quantity), 0);
   const totalUSCurrent = aggregatedUSStocks.reduce((sum, s) => sum + (s.currentPrice * s.quantity), 0);
@@ -63,15 +65,22 @@ export const AssetStatusSection = ({
   const totalKRReturn = totalKRCurrent - totalKRInvest;
   const totalKRReturnPercent = totalKRInvest > 0 ? (totalKRReturn / totalKRInvest * 100) : 0;
 
-  const handleAssetSort = (key: SortKey) => {
+  // [교육용 설명] 미국 주식 테이블 전용 정렬 핸들러
+  const handleUSSortChange = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
-    if (assetSortConfig && assetSortConfig.key === key && assetSortConfig.direction === 'asc') direction = 'desc';
-    setAssetSortConfig({ key, direction });
+    if (usSortConfig && usSortConfig.key === key && usSortConfig.direction === 'asc') direction = 'desc';
+    setUsSortConfig({ key, direction });
+  };
+  // [교육용 설명] 한국 주식 테이블 전용 정렬 핸들러
+  const handleKRSortChange = (key: SortKey) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (krSortConfig && krSortConfig.key === key && krSortConfig.direction === 'asc') direction = 'desc';
+    setKrSortConfig({ key, direction });
   };
 
-  const renderAssetSortIcon = (columnKey: SortKey) => {
-    if (!assetSortConfig || assetSortConfig.key !== columnKey) return <span style={{ opacity: 0.3, marginLeft: '4px', fontSize: '0.7em' }}>↕</span>;
-    return <span style={{ marginLeft: '4px', fontSize: '0.8em', color: 'var(--text-primary)' }}>{assetSortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
+  const renderAssetSortIcon = (columnKey: SortKey, sortConfig: SortConfig | null) => {
+    if (!sortConfig || sortConfig.key !== columnKey) return <span style={{ opacity: 0.3, marginLeft: '4px', fontSize: '0.7em' }}>↕</span>;
+    return <span style={{ marginLeft: '4px', fontSize: '0.8em', color: 'var(--text-primary)' }}>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
   };
 
   return (
@@ -130,13 +139,13 @@ export const AssetStatusSection = ({
             <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleAssetSort('name')}>종목명 {renderAssetSortIcon('name')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>수량 {renderAssetSortIcon('quantity')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>평균단가 {renderAssetSortIcon('avgPrice')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (USD) {renderAssetSortIcon('investment')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (USD) {renderAssetSortIcon('current')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익 (수익률) {renderAssetSortIcon('returnPercent')}</th>
+                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleUSSortChange('name')}>종목명 {renderAssetSortIcon('name', usSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleUSSortChange('quantity')}>수량 {renderAssetSortIcon('quantity', usSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleUSSortChange('avgPrice')}>평균단가 {renderAssetSortIcon('avgPrice', usSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleUSSortChange('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice', usSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleUSSortChange('investment')}>투자금액 (USD) {renderAssetSortIcon('investment', usSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleUSSortChange('current')}>평가금액 (USD) {renderAssetSortIcon('current', usSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleUSSortChange('returnPercent')}>수익 (수익률) {renderAssetSortIcon('returnPercent', usSortConfig)}</th>
                   <th>비중</th>
                 </tr>
               </thead>
@@ -243,13 +252,13 @@ export const AssetStatusSection = ({
             <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleAssetSort('name')}>종목명 {renderAssetSortIcon('name')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>수량 {renderAssetSortIcon('quantity')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>가중 평균단가 {renderAssetSortIcon('avgPrice')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (KRW) {renderAssetSortIcon('investment')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (KRW) {renderAssetSortIcon('current')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익 (수익률) {renderAssetSortIcon('returnPercent')}</th>
+                  <th style={{ cursor: 'pointer', width: '200px' }} onClick={() => handleKRSortChange('name')}>종목명 {renderAssetSortIcon('name', krSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleKRSortChange('quantity')}>수량 {renderAssetSortIcon('quantity', krSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleKRSortChange('avgPrice')}>가중 평균단가 {renderAssetSortIcon('avgPrice', krSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleKRSortChange('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice', krSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleKRSortChange('investment')}>투자금액 (KRW) {renderAssetSortIcon('investment', krSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleKRSortChange('current')}>평가금액 (KRW) {renderAssetSortIcon('current', krSortConfig)}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleKRSortChange('returnPercent')}>수익 (수익률) {renderAssetSortIcon('returnPercent', krSortConfig)}</th>
                   <th>비중</th>
                 </tr>
               </thead>

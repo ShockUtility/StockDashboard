@@ -7,8 +7,6 @@ interface PortfolioSectionProps {
   portfolio: Portfolio;
   isCollapsed: boolean;
   exchangeRate: number;
-  sortConfig: SortConfig | null;
-  setSortConfig: (config: SortConfig) => void;
   togglePortfolio: (id: string) => void;
   handleRenamePortfolio: (id: string, newName: string) => void;
   handleDeletePortfolio: (id: string) => void;
@@ -24,11 +22,15 @@ interface PortfolioSectionProps {
 }
 
 export const PortfolioSection = ({
-  portfolio, isCollapsed, exchangeRate, sortConfig, setSortConfig,
+  portfolio, isCollapsed, exchangeRate,
   togglePortfolio, handleRenamePortfolio, handleDeletePortfolio,
   onShowPieChart, onAddAsset, onShowDetail, onManageAsset,
   saveEditAsset, refreshingStockIds, pendingStockIds, showManageModal, managingAssetId
 }: PortfolioSectionProps) => {
+  // [교육용 설명] 각 포트폴리오 테이블이 자신만의 정렬 상태를 가집니다.
+  // 기존에는 부모(page.tsx)에서 하나의 sortConfig를 모든 포트폴리오에 공유했기 때문에
+  // 한 테이블의 헤더를 클릭하면 모든 테이블이 동시에 정렬이 바뀌는 버그가 있었습니다.
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editAssetData, setEditAssetData] = useState({ name: '', quantity: '', avgPrice: '', currentPrice: '' });
