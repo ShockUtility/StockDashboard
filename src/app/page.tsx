@@ -284,17 +284,19 @@ export default function Home() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="pie-chart-legend" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', maxWidth: '400px', margin: '0 auto' }}>
+          {/* [교육용 주석] 한 줄에 2개씩(1fr 1fr) 표시하되, 글자가 넘치지 않도록 글자 영역을 줄였습니다. */}
+          <div className="pie-chart-legend" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 10px', maxWidth: '100%', margin: '0 auto' }}>
             {totals.totalPieData.map((entry, index) => {
               const totalValue = totals.totalPieData.reduce((sum, e) => sum + e.value, 0);
               const percent = totalValue > 0 ? (entry.value / totalValue) * 100 : 0;
               return (
-                <div key={`legend-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div key={`legend-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)', padding: '6px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getCategoryColor(entry.name, index), flexShrink: 0 }}></span>
-                    <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }} title={entry.name}>{entry.name}</span>
+                    {/* [교육용 주석] maxWidth를 70px로 줄여 글자가 길어지면 '...'으로 생략되게 했습니다. */}
+                    <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70px' }} title={entry.name}>{entry.name}</span>
                   </div>
-                  <strong style={{ color: 'var(--text-secondary)', marginLeft: '8px' }}>{percent.toFixed(1)}%</strong>
+                  <strong style={{ color: 'var(--text-secondary)', marginLeft: '4px' }}>{percent.toFixed(1)}%</strong>
                 </div>
               );
             })}

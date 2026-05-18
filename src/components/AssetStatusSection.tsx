@@ -129,7 +129,7 @@ export const AssetStatusSection = ({
             <table className="glass-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleAssetSort('name')}>종목명 / 티커 {renderAssetSortIcon('name')}</th>
+                  <th style={{ cursor: 'pointer', width: '250px' }} onClick={() => handleAssetSort('name')}>종목명 {renderAssetSortIcon('name')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('quantity')}>보유 수량 {renderAssetSortIcon('quantity')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('avgPrice')}>가중 평균단가 {renderAssetSortIcon('avgPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
