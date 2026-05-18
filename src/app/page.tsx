@@ -85,7 +85,7 @@ export default function Home() {
 
     try {
       await fetchExchangeRate();
-      
+
       // 모든 계좌에서 종목별 자산 ID 매핑 (중복 업데이트용)
       const codeToAssetIds: { [code: string]: string[] } = {};
       portfolios.forEach(p => {
@@ -107,7 +107,7 @@ export default function Home() {
       portfolios.forEach(p => {
         // 현재 적용된 정렬 기준(sortConfig)으로 자산 정렬
         const sortedAssets = getSortedAssets(p.assets, sortConfig);
-        
+
         sortedAssets.forEach(a => {
           if ((a.type === 'KR_STOCK' || a.type === 'US_STOCK') && !seenCodes.has(a.code)) {
             seenCodes.add(a.code);
@@ -133,7 +133,7 @@ export default function Home() {
           const res = await fetch(`/api/stock?code=${encodeURIComponent(stock.code)}&country=${countryParam}`);
           if (res.ok) {
             const data = await res.json();
-            
+
             // 모든 포트폴리오에서 동일한 코드를 가진 자산을 일괄 업데이트
             setPortfolios(prev => prev.map(p => ({
               ...p,
@@ -370,9 +370,9 @@ export default function Home() {
       )}
 
       {activeMainTab === 'INDEX' && (
-        <IndexStatusSection 
-          externalExchangeRate={exchangeRate} 
-          onRefreshExchangeRate={fetchExchangeRate} 
+        <IndexStatusSection
+          externalExchangeRate={exchangeRate}
+          onRefreshExchangeRate={fetchExchangeRate}
         />
       )}
 

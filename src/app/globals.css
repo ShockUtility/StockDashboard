@@ -253,7 +253,8 @@ h1, h2, h3 {
 /* Responsive Grid */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 450px;
+  /* [교육용 주석] 자산 비중 영역의 너비를 450px에서 350px로 줄여서 요약 박스의 공간을 확보했습니다. */
+  grid-template-columns: 1fr 350px;
   gap: 24px;
   margin-bottom: 32px;
   align-items: stretch;
