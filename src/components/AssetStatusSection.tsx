@@ -135,7 +135,7 @@ export const AssetStatusSection = ({
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (USD) {renderAssetSortIcon('investment')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (USD) {renderAssetSortIcon('current')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익률 {renderAssetSortIcon('returnPercent')}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익 (수익률) {renderAssetSortIcon('returnPercent')}</th>
                   <th>비중</th>
                 </tr>
               </thead>
@@ -174,7 +174,10 @@ export const AssetStatusSection = ({
                         </td>
                         <td>{formatMoney(stockInvest, 'USD')}</td>
                         <td style={{ fontWeight: 600 }}>{formatMoney(stockCurrent, 'USD')}</td>
-                        <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>{retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%</td>
+                        <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>
+                          <div style={{ fontWeight: 600 }}>{retAmount >= 0 ? '+' : ''}{formatMoney(retAmount, 'USD')}</div>
+                          <div style={{ fontSize: '0.75rem' }}>({retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%)</div>
+                        </td>
                         <td>{weight.toFixed(1)}%</td>
                       </tr>
                     );
@@ -245,7 +248,7 @@ export const AssetStatusSection = ({
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('currentPrice')}>현재가 {renderAssetSortIcon('currentPrice')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('investment')}>투자금액 (KRW) {renderAssetSortIcon('investment')}</th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('current')}>평가금액 (KRW) {renderAssetSortIcon('current')}</th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익률 {renderAssetSortIcon('returnPercent')}</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleAssetSort('returnPercent')}>수익 (수익률) {renderAssetSortIcon('returnPercent')}</th>
                   <th>비중</th>
                 </tr>
               </thead>
@@ -284,7 +287,10 @@ export const AssetStatusSection = ({
                         </td>
                         <td>{formatMoney(stockInvest, 'KRW')}</td>
                         <td style={{ fontWeight: 600 }}>{formatMoney(stockCurrent, 'KRW')}</td>
-                        <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>{retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%</td>
+                        <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>
+                          <div style={{ fontWeight: 600 }}>{retAmount >= 0 ? '+' : ''}{formatMoney(retAmount, 'KRW')}</div>
+                          <div style={{ fontSize: '0.75rem' }}>({retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%)</div>
+                        </td>
                         <td>{weight.toFixed(1)}%</td>
                       </tr>
                     );
