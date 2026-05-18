@@ -77,7 +77,7 @@ export const AssetStatusSection = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '60px', marginTop: '32px' }}>
       {/* 미국 주식 */}
       <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
-        <div style={{ borderBottom: collapsedUS ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+        <div>
           <div className="flex-between">
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }} onClick={() => setCollapsedUS(prev => !prev)}>
               <span style={{ fontSize: '1.2rem', transform: collapsedUS ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', display: 'inline-block' }}>▼</span>
@@ -191,7 +191,7 @@ export const AssetStatusSection = ({
 
       {/* 한국 주식 */}
       <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
-        <div style={{ borderBottom: collapsedKR ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+        <div>
           <div className="flex-between">
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }} onClick={() => setCollapsedKR(prev => !prev)}>
               <span style={{ fontSize: '1.2rem', transform: collapsedKR ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', display: 'inline-block' }}>▼</span>
