@@ -29,6 +29,26 @@ interface AnalysisData {
   }[];
 }
 
+// 큰 숫자를 한글 단위(조, 억)로 포맷팅하는 함수
+// 컴포넌트 외부로 이동하여 다른 컴포넌트(툴팁 등)에서도 사용할 수 있게 합니다.
+const formatLargeNumber = (num?: number) => {
+  if (num === undefined || num === null) return '-';
+
+  // 조 단위
+  if (num >= 1e12) {
+    return `${(num / 1e12).toFixed(1)}조`;
+  }
+  // 억 단위
+  if (num >= 1e8) {
+    return `${(num / 1e8).toFixed(1)}억`;
+  }
+  // 만 단위
+  if (num >= 1e4) {
+    return `${(num / 1e4).toFixed(1)}만`;
+  }
+  return num.toLocaleString();
+};
+
 export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockDetailModalProps) => {
   // 탭 상태: 'chart'(차트), 'info'(정보), 'news'(뉴스)
   const [activeTab, setActiveTab] = useState<'chart' | 'info' | 'news'>('chart');
@@ -181,25 +201,6 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
   const allValues = prices.length > 0 ? prices : [asset.avgPrice];
   const minPrice = Math.min(...allValues) * 0.99;
   const maxPrice = Math.max(...allValues) * 1.01;
-
-  // 큰 숫자를 한글 단위(조, 억)로 포맷팅하는 함수
-  const formatLargeNumber = (num?: number) => {
-    if (num === undefined || num === null) return '-';
-
-    // 조 단위
-    if (num >= 1e12) {
-      return `${(num / 1e12).toFixed(1)}조`;
-    }
-    // 억 단위
-    if (num >= 1e8) {
-      return `${(num / 1e8).toFixed(1)}억`;
-    }
-    // 만 단위
-    if (num >= 1e4) {
-      return `${(num / 1e4).toFixed(1)}만`;
-    }
-    return num.toLocaleString();
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -435,7 +436,7 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
             </>
           )}
 
-          {/* [NEW] 정보 탭: 재무분석 자료 그리드 및 비교 차트 */}
+          {/* 정보 탭: 재무분석 자료 그리드 및 비교 차트 */}
           {activeTab === 'info' && (
             <div style={{ width: '100%', minHeight: '100%', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
@@ -451,7 +452,6 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
                   {/* 주요 투자 지표 그리드 */}
                   <div>
                     <h4 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'var(--accent-blue)' }}>주요 투자 지표</h4>
-                    {/* [수정] 1줄에 다 들어가도록 repeat(5, 1fr)로 변경하고 gap과 패딩을 줄였습니다. */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                       <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>시가총액</div>
@@ -534,11 +534,15 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
                               axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                               tickFormatter={(val) => formatLargeNumber(val)}
                             />
+                            
+                            {/* [수정] 툴팁을 커스텀하여 표시 순서와 색상을 완벽하게 일치시킵니다. */}
                             <Tooltip
-                              contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                              formatter={(value: any) => [formatLargeNumber(Number(value)), '']}
+                              content={<CustomAnalysisTooltip />}
                             />
-                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                            
+                            {/* [수정] 범례(Legend)를 커스텀 컴포넌트로 대체하여 가나다순 정렬 버그를 완벽히 해결합니다. */}
+                            <Legend content={<CustomLegend />} />
+                            
                             <Bar dataKey="revenue" fill="#3b82f6" name="매출액" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="operatingIncome" fill="#10b981" name="영업이익" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="netIncome" fill="#ef4444" name="순이익" radius={[4, 4, 0, 0]} />
@@ -623,6 +627,72 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
       `}</style>
     </div>
   );
+};
+
+// [NEW] 재무분석 차트 커스텀 범례 컴포넌트
+const CustomLegend = () => {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '11px', paddingTop: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ width: '12px', height: '12px', background: '#3b82f6', display: 'inline-block', borderRadius: '2px' }}></span>
+        <span style={{ color: 'var(--text-secondary)' }}>매출액</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ width: '12px', height: '12px', background: '#10b981', display: 'inline-block', borderRadius: '2px' }}></span>
+        <span style={{ color: 'var(--text-secondary)' }}>영업이익</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ width: '12px', height: '12px', background: '#ef4444', display: 'inline-block', borderRadius: '2px' }}></span>
+        <span style={{ color: 'var(--text-secondary)' }}>순이익</span>
+      </div>
+    </div>
+  );
+};
+
+// 재무분석 차트 커스텀 툴팁 컴포넌트
+const CustomAnalysisTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const revenueObj = payload.find((p: any) => p.dataKey === 'revenue');
+    const operatingObj = payload.find((p: any) => p.dataKey === 'operatingIncome');
+    const netObj = payload.find((p: any) => p.dataKey === 'netIncome');
+
+    return (
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.95)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '12px',
+        padding: '12px',
+        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+        pointerEvents: 'none',
+        color: '#fff'
+      }}>
+        <div style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 600 }}>
+          {label}년
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem' }}>
+          {revenueObj && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+              <span style={{ color: '#3b82f6' }}>● 매출액</span>
+              <strong>{formatLargeNumber(revenueObj.value)}</strong>
+            </div>
+          )}
+          {operatingObj && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+              <span style={{ color: '#10b981' }}>● 영업이익</span>
+              <strong>{formatLargeNumber(operatingObj.value)}</strong>
+            </div>
+          )}
+          {netObj && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+              <span style={{ color: '#ef4444' }}>● 순이익</span>
+              <strong>{formatLargeNumber(netObj.value)}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 // 캔들스틱 차트 모양 컴포넌트
