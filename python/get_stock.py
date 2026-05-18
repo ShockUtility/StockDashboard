@@ -4,11 +4,10 @@ import FinanceDataReader as fdr
 from datetime import datetime, timedelta
 import os
 
-/**
- * 주식 종목명을 캐시 파일에서 찾아 반환하는 함수입니다.
- * 교육용 설명: 이전에는 여기서 직접 캐시를 갱신하느라 렉이 걸렸으나,
- * 이제는 갱신 로직을 제거하고 오직 저장된 캐시를 빠르게 '읽기'만 합니다.
- */
+# [교육용 설명]
+# 주식 종목명을 캐시 파일에서 찾아 반환하는 함수입니다.
+# 이전에는 여기서 직접 캐시를 갱신하느라 렉이 걸렸으나,
+# 이제는 갱신 로직을 제거하고 오직 저장된 캐시를 빠르게 '읽기'만 합니다.
 def get_stock_name(code):
     cache_file = os.path.join(os.path.dirname(__file__), 'stock_names_cache.json')
     
