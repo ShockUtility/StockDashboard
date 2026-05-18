@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Asset, SortConfig } from '../types/portfolio';
 import { usePortfolio } from '../hooks/usePortfolio';
 import { useExchangeRate } from '../hooks/useExchangeRate';
@@ -31,6 +31,24 @@ export default function Home() {
 
   const { exchangeRate, exchangeHistory, fetchExchangeRate } = useExchangeRate();
   const { totals } = useCalculations(portfolios, exchangeRate);
+
+  // [교육용 추가] 페이지가 브라우저에 처음 보여졌을 때(마운트될 때) 
+  // 백그라운드에서 주식 종목 캐시를 갱신하도록 요청합니다.
+  useEffect(() => {
+    // 백그라운드로 요청만 보내고 응답을 기다리지 않고 넘어갑니다.
+    fetch('/api/update-stock-cache')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'updating') {
+          console.log('🚀 주식 캐시 갱신이 백그라운드에서 시작되었습니다.');
+        } else if (data.status === 'ok') {
+          console.log('✅ 주식 캐시가 이미 최신 상태입니다.');
+        }
+      })
+      .catch(err => {
+        console.error('❌ 캐시 갱신 요청 중 오류 발생:', err);
+      });
+  }, []); // 빈 배열[]을 넣어서 페이지 로드 시 '딱 한 번'만 실행되게 합니다.
 
   const getCategoryColor = (name: string, index: number) => {
     if (name.includes('현금')) return '#f59e0b'; // Amber
@@ -284,7 +302,6 @@ export default function Home() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          {/* [교육용 주석] 한 줄에 2개씩(1fr 1fr) 표시하되, 글자가 넘치지 않도록 글자 영역을 줄였습니다. */}
           <div className="pie-chart-legend" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 10px', maxWidth: '100%', margin: '0 auto' }}>
             {totals.totalPieData.map((entry, index) => {
               const totalValue = totals.totalPieData.reduce((sum, e) => sum + e.value, 0);
@@ -293,7 +310,6 @@ export default function Home() {
                 <div key={`legend-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)', padding: '6px 8px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: getCategoryColor(entry.name, index), flexShrink: 0 }}></span>
-                    {/* [교육용 주석] maxWidth를 70px로 줄여 글자가 길어지면 '...'으로 생략되게 했습니다. */}
                     <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70px' }} title={entry.name}>{entry.name}</span>
                   </div>
                   <strong style={{ color: 'var(--text-secondary)', marginLeft: '4px' }}>{percent.toFixed(1)}%</strong>

@@ -2,44 +2,35 @@ import sys
 import json
 import FinanceDataReader as fdr
 from datetime import datetime, timedelta
-
 import os
-import subprocess
 
+/**
+ * 주식 종목명을 캐시 파일에서 찾아 반환하는 함수입니다.
+ * 교육용 설명: 이전에는 여기서 직접 캐시를 갱신하느라 렉이 걸렸으나,
+ * 이제는 갱신 로직을 제거하고 오직 저장된 캐시를 빠르게 '읽기'만 합니다.
+ */
 def get_stock_name(code):
     cache_file = os.path.join(os.path.dirname(__file__), 'stock_names_cache.json')
-    today = datetime.now().strftime('%Y-%m-%d')
     
-    need_update = True
+    # 캐시 파일이 존재하는 경우에만 읽기를 시도합니다.
     if os.path.exists(cache_file):
         try:
             with open(cache_file, 'r', encoding='utf-8') as f:
                 cache_data = json.load(f)
-            if cache_data.get('date') == today:
-                need_update = False
-        except:
+                stock_info = cache_data.get('stocks', {}).get(code)
+                
+                # 정보가 객체 형태인 경우 (정상)
+                if isinstance(stock_info, dict):
+                    return stock_info
+                # 정보가 단순 문자열(이름만)인 경우의 예외 처리
+                elif isinstance(stock_info, str):
+                    return {"name": stock_info, "market": "UNKNOWN"}
+        except Exception as e:
+            # 파일 읽기나 JSON 파싱 중 에러가 발생해도 서버가 멈추지 않도록 합니다.
+            print(f"캐시 읽기 실패: {e}", file=sys.stderr)
             pass
-
-    # 갱신이 필요하면 업데이트 스크립트를 동기적으로 실행합니다. (수 초 소요)
-    if need_update:
-        update_script = os.path.join(os.path.dirname(__file__), 'update_stock_names.py')
-        # 서버 환경에 따라 python 경로가 다를 수 있어 sys.executable을 사용하거나 python3을 호출합니다.
-        python_exe = sys.executable or 'python3'
-        subprocess.run([python_exe, update_script], capture_output=True)
-        
-    # 캐시 파일에서 이름 읽기
-    try:
-        with open(cache_file, 'r', encoding='utf-8') as f:
-            cache_data = json.load(f)
-            stock_info = cache_data.get('stocks', {}).get(code)
-            
-            if isinstance(stock_info, dict):
-                return stock_info
-            elif isinstance(stock_info, str):
-                return {"name": stock_info, "market": "UNKNOWN"}
-    except:
-        pass
     
+    # 캐시 파일이 없거나 검색 결과가 없는 경우 기본값을 반환합니다.
     return {"name": code, "market": "UNKNOWN"}
 
 def main():
@@ -72,7 +63,7 @@ def main():
             if prev_price > 0:
                 change_percent = (current_price / prev_price - 1.0) * 100.0
         
-        # 종목명과 마켓 정보 검색
+        # 종목명과 마켓 정보 검색 (가벼워진 get_stock_name 함수 호출)
         stock_info = get_stock_name(code) if with_name else {}
         market = stock_info.get("market") if isinstance(stock_info, dict) else "UNKNOWN"
         
