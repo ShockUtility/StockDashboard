@@ -159,7 +159,19 @@ export const AssetStatusSection = ({
                         </td>
                         <td>{stock.quantity.toLocaleString()}</td>
                         <td>{formatMoney(stock.avgPrice, 'USD')}</td>
-                        <td className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}>{formatMoney(stock.currentPrice, 'USD')}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <span className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}>
+                              {formatMoney(stock.currentPrice, 'USD')}
+                            </span>
+                            {/* 당일 등락률 표시 추가 */}
+                            {stock.changePercent !== undefined && (
+                              <span className={stock.changePercent >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem' }}>
+                                {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td>{formatMoney(stockInvest, 'USD')}</td>
                         <td style={{ fontWeight: 600 }}>{formatMoney(stockCurrent, 'USD')}</td>
                         <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>{retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%</td>
@@ -257,7 +269,19 @@ export const AssetStatusSection = ({
                         </td>
                         <td>{stock.quantity.toLocaleString()}</td>
                         <td>{formatMoney(stock.avgPrice, 'KRW')}</td>
-                        <td className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}>{formatMoney(stock.currentPrice, 'KRW')}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <span className={stock.changePercent !== undefined && stock.changePercent >= 0 ? 'text-success' : 'text-danger'}>
+                              {formatMoney(stock.currentPrice, 'KRW')}
+                            </span>
+                            {/* 당일 등락률 표시 추가 */}
+                            {stock.changePercent !== undefined && (
+                              <span className={stock.changePercent >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '0.75rem' }}>
+                                {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td>{formatMoney(stockInvest, 'KRW')}</td>
                         <td style={{ fontWeight: 600 }}>{formatMoney(stockCurrent, 'KRW')}</td>
                         <td className={retAmount >= 0 ? 'text-success' : 'text-danger'}>{retPercent >= 0 ? '+' : ''}{retPercent.toFixed(2)}%</td>
