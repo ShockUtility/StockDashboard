@@ -5,6 +5,8 @@ import { StockDetailModalProps } from '../../types/portfolio';
 import { formatMoney, formatDateLabel } from '../../utils/format';
 
 export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockDetailModalProps) => {
+  // 탭 상태 추가: 'chart'(차트), 'info'(정보), 'news'(뉴스) 중 하나를 가집니다.
+  const [activeTab, setActiveTab] = useState<'chart' | 'info' | 'news'>('chart');
   const [history, setHistory] = useState<{ date: string, open: number, high: number, low: number, close: number, candleData: number[] }[]>([]);
   const [chartType, setChartType] = useState<'line' | 'candle'>('candle');
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,7 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95%', maxWidth: '800px', padding: '32px' }}>
         <button className="modal-close" onClick={onClose}>×</button>
 
+        {/* 헤더 영역: 종목명, 티커, 현재가 등 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
@@ -85,143 +88,229 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
           </div>
         </div>
 
-        <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px', minHeight: 'auto' }}>
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>보유 수량</div>
-            <div style={{ fontWeight: 600 }}>{asset.quantity.toLocaleString()}</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>평균 단가</div>
-            <div style={{ fontWeight: 600 }}>{formatMoney(asset.avgPrice, asset.currency)}</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>현재 수익</div>
-            <div className={returnAmount >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: 700 }}>
-              {returnAmount >= 0 ? '+' : ''}{formatMoney(returnAmount, asset.currency)} ({returnPercent.toFixed(2)}%)
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            {chartType === 'candle' && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#10b981' }}>
-                  <span style={{ width: '12px', height: '2px', background: '#10b981', display: 'inline-block' }}></span>
-                  <span>10일선</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#8b5cf6' }}>
-                  <span style={{ width: '12px', height: '2px', background: '#8b5cf6', display: 'inline-block' }}></span>
-                  <span>20일선</span>
-                </div>
-              </>
+        {/* 탭 네비게이션: 차트, 정보, 뉴스 탭을 선택할 수 있는 바입니다. */}
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+          <button
+            onClick={() => setActiveTab('chart')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeTab === 'chart' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px'
+            }}
+          >
+            차트
+            {activeTab === 'chart' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
             )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setChartType('line')}
-              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'line' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
-              라인 차트
-            </button>
-            <button
-              onClick={() => setChartType('candle')}
-              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'candle' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
-              캔들 차트
-            </button>
-          </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('info')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeTab === 'info' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px'
+            }}
+          >
+            정보
+            {activeTab === 'info' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('news')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeTab === 'news' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px'
+            }}
+          >
+            뉴스
+            {activeTab === 'news' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
+            )}
+          </button>
         </div>
-        <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', position: 'relative' }}>
-          {loading ? (
-            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <div className="text-secondary">차트 데이터를 불러오는 중...</div>
+
+        {/* 탭 내용 영역 */}
+        {activeTab === 'chart' && (
+          <>
+            {/* 기존 항목들 (대시보드 그리드)이 차트 탭 안으로 들어왔습니다. */}
+            <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px', minHeight: 'auto' }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>보유 수량</div>
+                <div style={{ fontWeight: 600 }}>{asset.quantity.toLocaleString()}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>평균 단가</div>
+                <div style={{ fontWeight: 600 }}>{formatMoney(asset.avgPrice, asset.currency)}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>현재 수익</div>
+                <div className={returnAmount >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: 700 }}>
+                  {returnAmount >= 0 ? '+' : ''}{formatMoney(returnAmount, asset.currency)} ({returnPercent.toFixed(2)}%)
+                </div>
+              </div>
             </div>
-          ) : error ? (
-            <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <div className="text-danger">{error}</div>
+
+            {/* 차트 컨트롤 영역 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {chartType === 'candle' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#10b981' }}>
+                      <span style={{ width: '12px', height: '2px', background: '#10b981', display: 'inline-block' }}></span>
+                      <span>10일선</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#8b5cf6' }}>
+                      <span style={{ width: '12px', height: '2px', background: '#8b5cf6', display: 'inline-block' }}></span>
+                      <span>20일선</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setChartType('line')}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'line' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                  라인 차트
+                </button>
+                <button
+                  onClick={() => setChartType('candle')}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: 'none', cursor: 'pointer', background: chartType === 'candle' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                  캔들 차트
+                </button>
+              </div>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              {chartType === 'line' ? (
-                <AreaChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
-                    tickFormatter={(str) => str.split('-').slice(1).join('/')}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                    tickLine={false}
-                    minTickGap={30}
-                  />
-                  <YAxis
-                    orientation="right"
-                    domain={[minPrice, maxPrice]}
-                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
-                    tickFormatter={(val) => val.toLocaleString()}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                    tickLine={false}
-                    width={50}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                    labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
-                    labelFormatter={(label: any) => formatDateLabel(String(label))}
-                    formatter={(value: any) => [formatMoney(Number(value), asset.currency), '종가']}
-                  />
-                  {asset.avgPrice >= minPrice && asset.avgPrice <= maxPrice && (
-                    <ReferenceLine
-                      y={asset.avgPrice}
-                      stroke="#f59e0b"
-                      strokeDasharray="5 5"
-                      label={<ReferenceLabel value={formatMoney(asset.avgPrice, asset.currency)} fill="#f59e0b" />}
-                    />
-                  )}
-                  <Area type="monotone" dataKey="close" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#ef4444' }} />
-                </AreaChart>
+
+            {/* 차트 영역 */}
+            <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)', position: 'relative' }}>
+              {loading ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div className="text-secondary">차트 데이터를 불러오는 중...</div>
+                </div>
+              ) : error ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div className="text-danger">{error}</div>
+                </div>
               ) : (
-                <ComposedChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
-                    tickFormatter={(str) => str.split('-').slice(1).join('/')}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                    tickLine={false}
-                    minTickGap={30}
-                  />
-                  <YAxis
-                    orientation="right"
-                    domain={[minPrice, maxPrice]}
-                    tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
-                    tickFormatter={(val) => val.toLocaleString()}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                    tickLine={false}
-                    width={50}
-                  />
-                  <Tooltip
-                    content={<CustomCandleTooltip formatMoney={formatMoney} currency={asset.currency} formatDateLabel={formatDateLabel} />}
-                  />
-                  {asset.avgPrice >= minPrice && asset.avgPrice <= maxPrice && (
-                    <ReferenceLine
-                      y={asset.avgPrice}
-                      stroke="#f59e0b"
-                      strokeDasharray="5 5"
-                      label={<ReferenceLabel value={formatMoney(asset.avgPrice, asset.currency)} fill="#f59e0b" />}
-                    />
+                <ResponsiveContainer width="100%" height="100%">
+                  {chartType === 'line' ? (
+                    <AreaChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
+                        tickFormatter={(str) => str.split('-').slice(1).join('/')}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                        tickLine={false}
+                        minTickGap={30}
+                      />
+                      <YAxis
+                        orientation="right"
+                        domain={[minPrice, maxPrice]}
+                        tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
+                        tickFormatter={(val) => val.toLocaleString()}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                        tickLine={false}
+                        width={50}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                        labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
+                        labelFormatter={(label: any) => formatDateLabel(String(label))}
+                        formatter={(value: any) => [formatMoney(Number(value), asset.currency), '종가']}
+                      />
+                      {asset.avgPrice >= minPrice && asset.avgPrice <= maxPrice && (
+                        <ReferenceLine
+                          y={asset.avgPrice}
+                          stroke="#f59e0b"
+                          strokeDasharray="5 5"
+                          label={<ReferenceLabel value={formatMoney(asset.avgPrice, asset.currency)} fill="#f59e0b" />}
+                        />
+                      )}
+                      <Area type="monotone" dataKey="close" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#ef4444' }} />
+                    </AreaChart>
+                  ) : (
+                    <ComposedChart data={history} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
+                        tickFormatter={(str) => str.split('-').slice(1).join('/')}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                        tickLine={false}
+                        minTickGap={30}
+                      />
+                      <YAxis
+                        orientation="right"
+                        domain={[minPrice, maxPrice]}
+                        tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
+                        tickFormatter={(val) => val.toLocaleString()}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                        tickLine={false}
+                        width={50}
+                      />
+                      <Tooltip
+                        content={<CustomCandleTooltip formatMoney={formatMoney} currency={asset.currency} formatDateLabel={formatDateLabel} />}
+                      />
+                      {asset.avgPrice >= minPrice && asset.avgPrice <= maxPrice && (
+                        <ReferenceLine
+                          y={asset.avgPrice}
+                          stroke="#f59e0b"
+                          strokeDasharray="5 5"
+                          label={<ReferenceLabel value={formatMoney(asset.avgPrice, asset.currency)} fill="#f59e0b" />}
+                        />
+                      )}
+                      <Line type="monotone" dataKey="ma10" stroke="#10b981" dot={false} strokeWidth={1.5} name="10일선" />
+                      <Line type="monotone" dataKey="ma20" stroke="#8b5cf6" dot={false} strokeWidth={1.5} name="20일선" />
+                      <Bar dataKey="candleData" shape={<CandlestickShape />} legendType="none" />
+                    </ComposedChart>
                   )}
-                  <Line type="monotone" dataKey="ma10" stroke="#10b981" dot={false} strokeWidth={1.5} name="10일선" />
-                  <Line type="monotone" dataKey="ma20" stroke="#8b5cf6" dot={false} strokeWidth={1.5} name="20일선" />
-                  <Bar dataKey="candleData" shape={<CandlestickShape />} legendType="none" />
-                </ComposedChart>
+                </ResponsiveContainer>
               )}
-            </ResponsiveContainer>
-          )}
-        </div>
+            </div>
+          </>
+        )}
 
+        {/* 정보 탭: 나중에 구현할 계획으로 공간만 확보합니다. */}
+        {activeTab === 'info' && (
+          <div style={{ width: '100%', height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)' }}>
+            <div className="text-secondary" style={{ fontSize: '1rem' }}>
+              ℹ️ 정보 탭은 나중에 구현될 예정입니다. (공간 확보)
+            </div>
+          </div>
+        )}
+
+        {/* 뉴스 탭: 나중에 구현할 계획으로 공간만 확보합니다. */}
+        {activeTab === 'news' && (
+          <div style={{ width: '100%', height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '24px', border: '1px solid var(--glass-border)' }}>
+            <div className="text-secondary" style={{ fontSize: '1rem' }}>
+              📰 뉴스 탭은 나중에 구현될 예정입니다. (공간 확보)
+            </div>
+          </div>
+        )}
+
+        {/* 닫기 버튼 */}
         <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
           <button className="glass-button" style={{ width: 'auto', padding: '12px 40px' }} onClick={onClose}>닫기</button>
         </div>
@@ -230,6 +319,7 @@ export const StockDetailModal = ({ isOpen, onClose, asset, formatMoney }: StockD
   );
 };
 
+// 캔들스틱 차트 모양을 그리는 컴포넌트입니다.
 const CandlestickShape = (props: any) => {
   const { x, y, width, height, payload } = props;
   const { open, close, high, low } = payload;
@@ -261,6 +351,7 @@ const CandlestickShape = (props: any) => {
   );
 };
 
+// 기준선 라벨을 그리는 컴포넌트입니다.
 const ReferenceLabel = (props: any) => {
   const { viewBox, value, fill } = props;
   const { x, y } = viewBox;
@@ -281,6 +372,7 @@ const ReferenceLabel = (props: any) => {
   );
 };
 
+// 커스텀 캔들 툴팁 컴포넌트입니다.
 const CustomCandleTooltip = ({ active, payload, label, formatMoney, currency, formatDateLabel }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
