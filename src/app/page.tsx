@@ -93,6 +93,22 @@ export default function Home() {
 
   // --- Actions ---
 
+  // [교육용 설명]
+  // 자식 컴포넌트(PortfolioSection)에서 헤더를 클릭했을 때,
+  // 실제 p.assets 배열을 해당 기준으로 완전히 정렬해서 덮어씁니다.
+  const handleSortAssets = (pId: string, sortConfig: SortConfig) => {
+    setPortfolios(prev => prev.map(p => {
+      if (p.id === pId) {
+        return {
+          ...p,
+          sortConfig, // 방금 요청한 정렬 기준을 저장해 둡니다 (새로고침 완료 후 재사용).
+          assets: getSortedAssets(p.assets, sortConfig, exchangeRate)
+        };
+      }
+      return p;
+    }));
+  };
+
   const handleRefreshPrices = async () => {
     setLoading(true);
     setRefreshIndex(0);
@@ -117,10 +133,10 @@ export default function Home() {
       const seenCodes = new Set<string>();
 
       portfolios.forEach(p => {
-        // [교육용 설명] getSortedAssets 호출 시 exchangeRate를 넘겨주도록 수정했습니다.
-        const sortedAssets = getSortedAssets(p.assets, null, exchangeRate);
-
-        sortedAssets.forEach(a => {
+        // [교육용 설명]
+        // 시세 새로고침 시 굳이 정렬 함수를 호출할 필요가 없어졌습니다.
+        // 이미 p.assets는 물리적으로 정렬되어 있으므로 그 순서 그대로 API를 요청하면 됩니다.
+        p.assets.forEach(a => {
           if ((a.type === 'KR_STOCK' || a.type === 'US_STOCK') && !seenCodes.has(a.code)) {
             seenCodes.add(a.code);
             stockList.push({ code: a.code, type: a.type, assetIds: codeToAssetIds[a.code] });
@@ -156,6 +172,20 @@ export default function Home() {
           setRefreshIndex(prev => prev + 1);
         }
       }
+
+      // [교육용 설명]
+      // 모든 종목의 시세 업데이트가 끝났으므로, 바뀐 가격/수익률을 기준으로
+      // 각 포트폴리오가 가진 정렬 기준(sortConfig)에 맞게 최종적으로 한 번 더 정렬해 줍니다.
+      setPortfolios(prev => prev.map(p => {
+        if (p.sortConfig) {
+          return {
+            ...p,
+            assets: getSortedAssets(p.assets, p.sortConfig, exchangeRate)
+          };
+        }
+        return p;
+      }));
+
     } catch (error) {
       console.error("업데이트 실패:", error);
       alert('시세 새로고침 중 오류가 발생했습니다.');
@@ -411,6 +441,7 @@ export default function Home() {
               pendingStockIds={pendingStockIds}
               showManageModal={showManageModal}
               managingAssetId={managingAssetInfo?.asset.id}
+              onSortAssets={handleSortAssets}
             />
           ))}
           <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>

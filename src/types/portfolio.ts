@@ -14,6 +14,7 @@ export interface Portfolio {
   id: string;
   name: string;
   assets: Asset[];
+  sortConfig?: SortConfig;
 }
 
 export type SortKey = 'name' | 'quantity' | 'avgPrice' | 'currentPrice' | 'investment' | 'current' | 'returnAmount' | 'returnPercent';

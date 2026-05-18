@@ -19,18 +19,19 @@ interface PortfolioSectionProps {
   pendingStockIds: string[];
   showManageModal: boolean;
   managingAssetId?: string;
+  onSortAssets: (pId: string, config: SortConfig) => void;
 }
 
 export const PortfolioSection = ({
   portfolio, isCollapsed, exchangeRate,
   togglePortfolio, handleRenamePortfolio, handleDeletePortfolio,
   onShowPieChart, onAddAsset, onShowDetail, onManageAsset,
-  saveEditAsset, refreshingStockIds, pendingStockIds, showManageModal, managingAssetId
+  saveEditAsset, refreshingStockIds, pendingStockIds, showManageModal, managingAssetId, onSortAssets
 }: PortfolioSectionProps) => {
-  // [교육용 설명] 각 포트폴리오 테이블이 자신만의 정렬 상태를 가집니다.
-  // 기존에는 부모(page.tsx)에서 하나의 sortConfig를 모든 포트폴리오에 공유했기 때문에
-  // 한 테이블의 헤더를 클릭하면 모든 테이블이 동시에 정렬이 바뀌는 버그가 있었습니다.
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'current', direction: 'desc' });
+  // [교육용 설명]
+  // 정렬 기준(sortConfig)을 내부 상태(Local State)가 아닌 portfolio 객체에서 직접 참조합니다.
+  // 실제 배열(portfolio.assets) 자체가 부모에서 이미 정렬되어 내려오기 때문에, 여기서는 화면에 그대로 뿌려주기만 하면 됩니다.
+  const sortConfig = portfolio.sortConfig;
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editAssetData, setEditAssetData] = useState({ name: '', quantity: '', avgPrice: '', currentPrice: '' });
@@ -55,13 +56,15 @@ export const PortfolioSection = ({
 
   const pReturnAmount = pStockCurrentKRW - pInvestKRW;
   
-  // [교육용 설명] getSortedAssets 호출 시 exchangeRate(환율)를 인자로 추가했습니다.
-  const sortedAssets = getSortedAssets(portfolio.assets, sortConfig, exchangeRate);
+  // [교육용 설명]
+  // 부모에서 이미 물리적으로 정렬된 배열을 내려주기 때문에, 별도의 동적 정렬 함수를 호출하지 않습니다.
+  const sortedAssets = portfolio.assets;
 
   const handleSort = (key: SortKey) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
-    setSortConfig({ key, direction });
+    // [교육용 설명] 내부 상태를 바꾸는 대신 부모에게 "이 기준으로 배열 전체를 다시 정렬해서 덮어써달라"고 요청합니다.
+    onSortAssets(portfolio.id, { key, direction });
   };
 
   const startEditAsset = (asset: Asset, field: string = 'name') => {
