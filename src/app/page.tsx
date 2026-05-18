@@ -14,7 +14,6 @@ import { DashboardSummary } from '../components/DashboardSummary';
 import { PortfolioSection } from '../components/PortfolioSection';
 import { AssetStatusSection } from '../components/AssetStatusSection';
 import { IndexStatusSection } from '../components/IndexStatusSection';
-import { NewsSection } from '../components/NewsSection';
 
 // Modals
 import { PieModal } from '../components/modals/PortfolioPieModal';
@@ -32,10 +31,9 @@ export default function Home() {
   const { exchangeRate, exchangeHistory, fetchExchangeRate } = useExchangeRate();
   const { totals } = useCalculations(portfolios, exchangeRate);
 
-  // [교육용 추가] 페이지가 브라우저에 처음 보여졌을 때(마운트될 때) 
+  // 페이지가 브라우저에 처음 보여졌을 때(마운트될 때) 
   // 백그라운드에서 주식 종목 캐시를 갱신하도록 요청합니다.
   useEffect(() => {
-    // 백그라운드로 요청만 보내고 응답을 기다리지 않고 넘어갑니다.
     fetch('/api/update-stock-cache')
       .then(res => res.json())
       .then(data => {
@@ -48,7 +46,7 @@ export default function Home() {
       .catch(err => {
         console.error('❌ 캐시 갱신 요청 중 오류 발생:', err);
       });
-  }, []); // 빈 배열[]을 넣어서 페이지 로드 시 '딱 한 번'만 실행되게 합니다.
+  }, []);
 
   const getCategoryColor = (name: string, index: number) => {
     if (name.includes('현금')) return '#f59e0b'; // Amber
@@ -59,7 +57,7 @@ export default function Home() {
   };
 
   // UI State
-  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET' | 'INDEX' | 'NEWS'>('MANAGE');
+  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET' | 'INDEX'>('MANAGE');
   const [collapsedPortfolios, setCollapsedPortfolios] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(false);
   const [refreshIndex, setRefreshIndex] = useState<number>(0);
@@ -104,7 +102,6 @@ export default function Home() {
     try {
       await fetchExchangeRate();
 
-      // 모든 계좌에서 종목별 자산 ID 매핑 (중복 업데이트용)
       const codeToAssetIds: { [code: string]: string[] } = {};
       portfolios.forEach(p => {
         p.assets.forEach(a => {
@@ -118,12 +115,10 @@ export default function Home() {
         });
       });
 
-      // 화면에 보이는 순서(정렬 기준 적용)대로 고유 종목 리스트 생성
       const stockList: { code: string, type: 'KR_STOCK' | 'US_STOCK', assetIds: string[] }[] = [];
       const seenCodes = new Set<string>();
 
       portfolios.forEach(p => {
-        // 현재 적용된 정렬 기준(sortConfig)으로 자산 정렬
         const sortedAssets = getSortedAssets(p.assets, sortConfig);
 
         sortedAssets.forEach(a => {
@@ -137,12 +132,10 @@ export default function Home() {
       const totalCount = stockList.length;
       if (totalCount === 0) { setLoading(false); return; }
 
-      // UI 표시를 위해 모든 자산 ID를 대기열에 추가
       const allAssetIds = stockList.flatMap(s => s.assetIds);
       setPendingStockIds(allAssetIds);
 
       for (const stock of stockList) {
-        // 해당 종목을 가진 모든 자산 ID를 로딩 상태로 변경
         setRefreshingStockIds(prev => [...prev, ...stock.assetIds]);
         setPendingStockIds(prev => prev.filter(id => !stock.assetIds.includes(id)));
 
@@ -152,7 +145,6 @@ export default function Home() {
           if (res.ok) {
             const data = await res.json();
 
-            // 모든 포트폴리오에서 동일한 코드를 가진 자산을 일괄 업데이트
             setPortfolios(prev => prev.map(p => ({
               ...p,
               assets: p.assets.map(a => a.code === stock.code ? { ...a, currentPrice: data.currentPrice, changePercent: data.changePercent } : a)
@@ -252,7 +244,7 @@ export default function Home() {
     }
   };
 
-  if (!isMounted) return null; // Hydration 이슈 방지
+  if (!isMounted) return null;
 
   return (
     <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -274,7 +266,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="dashboard-grid">
+      <div className="dashboard-grid" style={{ marginBottom: '32px' }}>
         <DashboardSummary
           totalInvestmentKRW={totals.totalInvestmentKRW}
           totalCurrentValueKRW={totals.totalCurrentValueKRW}
@@ -320,12 +312,66 @@ export default function Home() {
         </section>
       </div>
 
-      <div style={{ position: 'sticky', top: '20px', zIndex: 100 }}>
-        <div style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', padding: '6px', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', gap: '4px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)' }}>
-          <button onClick={() => setActiveMainTab('MANAGE')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'MANAGE' ? 'rgba(59, 130, 246, 0.8)' : 'transparent', color: activeMainTab === 'MANAGE' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📂</span> 계좌 관리</button>
-          <button onClick={() => setActiveMainTab('ASSET')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'ASSET' ? 'rgba(139, 92, 246, 0.8)' : 'transparent', color: activeMainTab === 'ASSET' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📊</span> 자산별 현황</button>
-          <button onClick={() => setActiveMainTab('INDEX')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'INDEX' ? 'rgba(16, 185, 129, 0.8)' : 'transparent', color: activeMainTab === 'INDEX' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📈</span> 지수 현황</button>
-          <button onClick={() => setActiveMainTab('NEWS')} style={{ padding: '10px 24px', borderRadius: '16px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.3s', background: activeMainTab === 'NEWS' ? 'rgba(245, 158, 11, 0.8)' : 'transparent', color: activeMainTab === 'NEWS' ? '#fff' : 'rgba(255, 255, 255, 0.6)' }}><span>📰</span> 뉴스</button>
+      {/* [교육용 설명] 요청에 따라 탭 컨테이너의 배경색(background)을 지워 투명하게 만들었습니다. */}
+      <div style={{ position: 'sticky', top: '0', zIndex: 100, backdropFilter: 'blur(10px)', marginBottom: '32px', paddingTop: '20px' }}>
+        <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+          <button
+            onClick={() => setActiveMainTab('MANAGE')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeMainTab === 'MANAGE' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px',
+              transition: 'all 0.3s'
+            }}
+          >
+            <span>📂</span> 계좌 관리
+            {activeMainTab === 'MANAGE' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveMainTab('ASSET')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeMainTab === 'ASSET' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px',
+              transition: 'all 0.3s'
+            }}
+          >
+            <span>📊</span> 자산별 현황
+            {activeMainTab === 'ASSET' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveMainTab('INDEX')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeMainTab === 'INDEX' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px',
+              transition: 'all 0.3s'
+            }}
+          >
+            <span>📈</span> 지수 현황
+            {activeMainTab === 'INDEX' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
+            )}
+          </button>
         </div>
       </div>
 
@@ -392,10 +438,6 @@ export default function Home() {
           externalExchangeRate={exchangeRate}
           onRefreshExchangeRate={fetchExchangeRate}
         />
-      )}
-
-      {activeMainTab === 'NEWS' && (
-        <NewsSection portfolios={portfolios} exchangeRate={exchangeRate} />
       )}
 
       {/* 플로팅 관리 메뉴 */}
