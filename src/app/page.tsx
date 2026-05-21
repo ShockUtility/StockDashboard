@@ -14,12 +14,18 @@ import { DashboardSummary } from '../components/DashboardSummary';
 import { PortfolioSection } from '../components/PortfolioSection';
 import { AssetStatusSection } from '../components/AssetStatusSection';
 import { IndexStatusSection } from '../components/IndexStatusSection';
+// [교육용 주석] 신규 추가한 주요일정 메인 UI 섹션을 임포트합니다.
+import { ScheduleSection } from '../components/ScheduleSection';
 
 // Modals
 import { PieModal } from '../components/modals/PortfolioPieModal';
 import { ExchangeRateModal } from '../components/modals/ExchangeChartPopup';
 import { AddStockModal } from '../components/modals/AddStockModal';
 import { StockDetailModal } from '../components/modals/StockDetailModal';
+
+// Hooks
+// [교육용 주석] 신규 추가한 일정 관리 커스텀 훅을 임포트합니다.
+import { useSchedule } from '../hooks/useSchedule';
 
 export default function Home() {
   const {
@@ -30,6 +36,11 @@ export default function Home() {
 
   const { exchangeRate, exchangeHistory, fetchExchangeRate } = useExchangeRate();
   const { totals } = useCalculations(portfolios, exchangeRate);
+
+  // [교육용 주석] 일정 관련 상태와 제어 함수들을 가져옵니다.
+  const {
+    schedules, setSchedules, addSchedule, editSchedule, deleteSchedule, mergeAISchedules
+  } = useSchedule();
 
   // 페이지가 브라우저에 처음 보여졌을 때(마운트될 때) 
   // 백그라운드에서 주식 종목 캐시를 갱신하도록 요청합니다.
@@ -57,7 +68,8 @@ export default function Home() {
   };
 
   // UI State
-  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET' | 'INDEX'>('MANAGE');
+  // [교육용 주석] 탭 상태 타입에 'SCHEDULE' (주요일정)을 추가해 줍니다.
+  const [activeMainTab, setActiveMainTab] = useState<'MANAGE' | 'ASSET' | 'INDEX' | 'SCHEDULE'>('MANAGE');
   const [collapsedPortfolios, setCollapsedPortfolios] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(false);
   const [refreshIndex, setRefreshIndex] = useState<number>(0);
@@ -93,15 +105,12 @@ export default function Home() {
 
   // --- Actions ---
 
-  // [교육용 설명]
-  // 자식 컴포넌트(PortfolioSection)에서 헤더를 클릭했을 때,
-  // 실제 p.assets 배열을 해당 기준으로 완전히 정렬해서 덮어씁니다.
   const handleSortAssets = (pId: string, sortConfig: SortConfig) => {
     setPortfolios(prev => prev.map(p => {
       if (p.id === pId) {
         return {
           ...p,
-          sortConfig, // 방금 요청한 정렬 기준을 저장해 둡니다 (새로고침 완료 후 재사용).
+          sortConfig,
           assets: getSortedAssets(p.assets, sortConfig, exchangeRate)
         };
       }
@@ -133,9 +142,6 @@ export default function Home() {
       const seenCodes = new Set<string>();
 
       portfolios.forEach(p => {
-        // [교육용 설명]
-        // 시세 새로고침 시 굳이 정렬 함수를 호출할 필요가 없어졌습니다.
-        // 이미 p.assets는 물리적으로 정렬되어 있으므로 그 순서 그대로 API를 요청하면 됩니다.
         p.assets.forEach(a => {
           if ((a.type === 'KR_STOCK' || a.type === 'US_STOCK') && !seenCodes.has(a.code)) {
             seenCodes.add(a.code);
@@ -173,9 +179,6 @@ export default function Home() {
         }
       }
 
-      // [교육용 설명]
-      // 모든 종목의 시세 업데이트가 끝났으므로, 바뀐 가격/수익률을 기준으로
-      // 각 포트폴리오가 가진 정렬 기준(sortConfig)에 맞게 최종적으로 한 번 더 정렬해 줍니다.
       setPortfolios(prev => prev.map(p => {
         if (p.sortConfig) {
           return {
@@ -230,8 +233,14 @@ export default function Home() {
     }
   };
 
+  // [교육용 주석] 백업 내보내기 시 일정(schedules)도 함께 묶어서 버전 3.0으로 포맷을 확장합니다.
   const handleExport = () => {
-    const exportData = { version: '2.0', portfolios, timestamp: new Date().toISOString() };
+    const exportData = {
+      version: '3.0',
+      portfolios,
+      schedules,
+      timestamp: new Date().toISOString()
+    };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
@@ -241,6 +250,7 @@ export default function Home() {
     downloadAnchorNode.remove();
   };
 
+  // [교육용 주석] 백업 가져오기 시 이전 버전 2.0(포트폴리오만 존재)과 신규 버전 3.0을 모두 유연하게 불러오도록 호환성을 제공합니다.
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -248,12 +258,24 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (json.version === '2.0' && Array.isArray(json.portfolios)) {
+        
+        if (json.version === '3.0' && Array.isArray(json.portfolios)) {
           setPortfolios(json.portfolios);
+          if (json.schedules && Array.isArray(json.schedules)) {
+            setSchedules(json.schedules);
+          } else {
+            setSchedules([]);
+          }
           if (json.portfolios.length > 0) setCurrentPortfolioId(json.portfolios[0].id);
-          alert('데이터를 성공적으로 불러왔습니다.');
+          alert('데이터를 성공적으로 불러왔습니다. (포트폴리오 & 일정 복원 완료)');
+        } else if (json.version === '2.0' && Array.isArray(json.portfolios)) {
+          // 기존 구버전 파일(포트폴리오만 저장됨) 불러오기 시 하위 호환 처리
+          setPortfolios(json.portfolios);
+          setSchedules([]); // 일정 목록은 빈 값으로 초기화
+          if (json.portfolios.length > 0) setCurrentPortfolioId(json.portfolios[0].id);
+          alert('버전 2.0 데이터를 불러왔습니다. (포트폴리오는 복원되었으며 일정은 초기 상태로 세팅되었습니다.)');
         } else {
-          throw new Error('지원하지 않는 파일 형식입니다. (V2 백업 파일 필요)');
+          throw new Error('지원하지 않는 파일 형식입니다. (V2 또는 V3 포맷의 백업 JSON 파일이 필요합니다.)');
         }
       } catch (error: any) {
         alert('오류 발생: ' + error.message);
@@ -264,10 +286,12 @@ export default function Home() {
     reader.readAsText(file);
   };
 
+  // [교육용 주석] 데이터 초기화 시 포트폴리오뿐만 아니라 일정도 함께 지워지도록 기능을 갱신합니다.
   const handleResetData = () => {
-    if (confirm('모든 데이터가 삭제됩니다. 초기화하시겠습니까?')) {
+    if (confirm('모든 데이터(포트폴리오 및 등록된 일정)가 삭제됩니다. 초기화하시겠습니까?')) {
       const initPortfolio = { id: 'init-' + Date.now(), name: '나의 포트폴리오', assets: [{ id: 'cash-' + Date.now(), type: 'CASH' as const, name: '현금 (KRW)', code: 'CASH', quantity: 0, avgPrice: 1, currentPrice: 1, currency: 'KRW' as const }] };
       setPortfolios([initPortfolio]);
+      setSchedules([]); // 일정도 모두 지워 빈 배열로 만듭니다.
       setCurrentPortfolioId(initPortfolio.id);
       alert('초기화되었습니다.');
     }
@@ -341,7 +365,6 @@ export default function Home() {
         </section>
       </div>
 
-      {/* [교육용 설명] 요청에 따라 탭 컨테이너의 배경색(background)을 지워 투명하게 만들었습니다. */}
       <div style={{ position: 'sticky', top: '0', zIndex: 100, backdropFilter: 'blur(10px)', marginBottom: '32px', paddingTop: '20px' }}>
         <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
           <button
@@ -398,6 +421,26 @@ export default function Home() {
           >
             <span>📈</span> 지수 현황
             {activeMainTab === 'INDEX' && (
+              <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
+            )}
+          </button>
+          {/* [교육용 주석] 상단 메인 내비게이션 탭 영역에 "주요일정" 버튼을 연동합니다. */}
+          <button
+            onClick={() => setActiveMainTab('SCHEDULE')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeMainTab === 'SCHEDULE' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '4px 8px',
+              transition: 'all 0.3s'
+            }}
+          >
+            <span>📅</span> 주요일정
+            {activeMainTab === 'SCHEDULE' && (
               <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
             )}
           </button>
@@ -465,6 +508,18 @@ export default function Home() {
         <IndexStatusSection
           externalExchangeRate={exchangeRate}
           onRefreshExchangeRate={fetchExchangeRate}
+        />
+      )}
+
+      {/* [교육용 주석] 활성화된 탭이 'SCHEDULE' 일 때 스케줄 섹션 컴포넌트를 렌더링합니다. */}
+      {activeMainTab === 'SCHEDULE' && (
+        <ScheduleSection
+          portfolios={portfolios}
+          schedules={schedules}
+          addSchedule={addSchedule}
+          editSchedule={editSchedule}
+          deleteSchedule={deleteSchedule}
+          mergeAISchedules={mergeAISchedules}
         />
       )}
 
