@@ -144,8 +144,22 @@ def get_ticker_schedule(ticker_symbol, year=None):
     normalized_ticker = get_stock_market_suffix(original_ticker)
 
     ticker = yf.Ticker(normalized_ticker)
-    calendar = ticker.calendar
-    actions = ticker.actions
+    
+    # [교육용 설명] yfinance 라이브러리가 특정 종목(예: 우선주 등)을 파싱할 때 내부 오류를 유발할 수 있으므로
+    # calendar 정보 획득 시 try-except 예외 처리를 감싸 안정성을 확보합니다.
+    calendar = {}
+    try:
+        calendar = ticker.calendar
+    except Exception as exc:
+        print(f"Warning: Failed to fetch calendar for {normalized_ticker}: {exc}", file=sys.stderr)
+
+    # [교육용 설명] 'PriceHistory' object has no attribute '_dividends' 등과 같은 내부 속성 파싱 오류 발생 시
+    # 전체 금융 일정 병합 스크립트가 도중에 실패하지 않도록 try-except 예외 처리를 추가합니다.
+    actions = None
+    try:
+        actions = ticker.actions
+    except Exception as exc:
+        print(f"Warning: Failed to fetch actions for {normalized_ticker}: {exc}", file=sys.stderr)
 
     events = parse_calendar_events(calendar, year, original_ticker) + parse_action_events(actions, year, original_ticker)
 
