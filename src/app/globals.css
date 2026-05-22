@@ -224,7 +224,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000; /* [교육용 주석] 기존의 1000에서 2000으로 격상하여, 모바일 상세 정보 팝업(z-index: 1001)보다 항상 최상단에 렌더링되게 버그를 원천 차단합니다. */
   opacity: 0;
   animation: fadeIn 0.2s forwards;
 }
@@ -275,9 +275,18 @@ h3 {
   align-items: stretch;
 }
 
+.schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  margin-bottom: 32px;
+  align-items: stretch;
+}
+
 /* Tablet & Mobile Optimization */
 @media (max-width: 1200px) {
-  .dashboard-grid {
+  .dashboard-grid,
+  .schedule-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -309,6 +318,13 @@ h3 {
 
   .cash-details>div {
     width: 100%;
+  }
+
+  /* [교육용 주석] 모바일 화면(세로 정렬)일 때 달러 현금과 총보유현금의 좌측에 
+     어색하게 남아있던 세로 보더 구분선(border-left)을 깔끔하게 제거하고 왼쪽 패딩을 리셋합니다. */
+  .cash-detail-col + .cash-detail-col {
+    border-left: none !important;
+    padding-left: 0 !important;
   }
 
   .cash-total-card {
@@ -385,5 +401,251 @@ h3 {
 @keyframes scaleUp {
   to {
     transform: scale(1);
+  }
+}
+
+/* --- 모바일 반응형 추가 유틸리티 --- */
+
+/* [교육용 주석] 데스크톱과 모바일 환경에서 번갈아 숨기거나 표시할 때 사용되는 반응형 헬퍼 클래스입니다. */
+.desktop-only {
+  display: block !important;
+}
+.mobile-only {
+  display: none !important;
+}
+
+/* 통합 설정 드롭다운 메뉴 스타일 */
+.settings-menu-container {
+  /* [교육용 주석] 스크롤 시 화면에 고정되어 따라오는 대신 대시보드 헤더의 우상단에 위치하게 만들기 위해 position을 fixed에서 absolute로 변경했습니다. */
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: inline-block;
+}
+
+.schedule-action-btn {
+  padding: 10px 20px !important;
+}
+
+@media (max-width: 768px) {
+  .schedule-action-btn {
+    padding: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+.settings-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  z-index: 1000;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transform: translateY(-10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.settings-dropdown.show {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.settings-menu-item {
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.settings-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ff5555;
+}
+
+/* [교육용 주석] 
+   보유 자산 요약 하단의 원화 현금, 달러 현금, 총 보유 현금 카드가 
+   데스크톱 등 넓은 화면에서 1:1:1 비율로 균등 분할되고 
+   그 사이에 깔끔한 세로 구분선(border-left)이 채워지도록 레이아웃을 잡아줍니다. */
+.cash-detail-col {
+  flex: 1;
+}
+.cash-detail-col + .cash-detail-col {
+  border-left: 1px solid var(--glass-border);
+  padding-left: 16px;
+}
+
+/* 모바일 미디어 쿼리 보완 (768px 이하) */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: block !important;
+  }
+  
+  /* 테이블을 감싼 컨테이너의 가로 스크롤감을 부드럽게 만들기 위해 터치 관성 스크롤을 활성화합니다. */
+  .glass-table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 테이블 헤더와 셀 폰트/패딩 축소 */
+  .glass-table th,
+  .glass-table td {
+    padding: 8px 6px !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* 차트 범례 세로 정렬 및 공간 최적화 */
+  .pie-chart-legend {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  /* 달력 셀 콤팩트 크기 조율 */
+  .calendar-grid-cell {
+    height: 75px !important;
+  }
+
+  /* [교육용 주석] 
+     모바일 화면에서 부모의 gridAutoRows 속성이 데스크톱 기준(140px)으로 
+     인라인 고정되어 세로가 심하게 벌어지던 버그를 방지하기 위해 
+     grid-auto-rows: 75px, 그리고 셀 간 격차인 gap을 4px로 강제 지정하여 
+     오밀조밀하고 단정하게 정렬되도록 개선했습니다. */
+  .calendar-grid-container {
+    grid-auto-rows: 75px !important;
+    gap: 4px !important;
+  }
+
+  /* 모바일 일정 도트(Dot) 변형 스타일 */
+  .calendar-events-container {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    margin-top: 6px !important;
+    justify-content: flex-start;
+  }
+
+  .calendar-event-badge {
+    padding: 0 !important;
+    border-radius: 50% !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    max-width: 8px !important;
+    overflow: hidden !important;
+    border: none !important;
+    display: inline-block !important;
+    /* [교육용 주석] 
+       모바일 화면(도트 표시)일 때, 투명도가 있는 옅은 뱃지 배경색(opacity 0.12)을 그대로 상속받으면 점이 흐릿해서 안 보입니다.
+       이를 해결하기 위해 React 컴포넌트에서 주입해 준 또렷하고 명확한 고유 글씨 컬러(color) 값을 
+       도트의 배경색으로 사용하도록 'currentColor'를 연동하여 모바일에서도 일정이 선명하게 구분되도록 최적화했습니다. */
+    background: currentColor !important;
+  }
+
+  .calendar-event-badge svg {
+    display: none !important; /* 모바일 도트 화면에서는 아이콘도 숨김 */
+  }
+
+  /* [교육용 주석] 
+     모바일 화면(768px 이하)에서 달력 날짜를 클릭했을 때만 상세 일정 목록이 
+     화면 하단에 장황하게 늘어나는 대신, 화면 중앙에 미려하게 팝업되는 모달 스타일을 정의합니다. */
+  #selected-date-detail {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 90% !important;
+    max-width: 460px !important;
+    max-height: 80vh !important;
+    z-index: 1001 !important;
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9) !important;
+    
+    /* [교육용 주석] 
+       기존의 display: none/flex 방식은 속성이 바뀌는 순간 브라우저가 즉시 렌더 트리를 재배치하므로 transition 애니메이션이 먹히지 않고 뚝뚝 끊겨서 팝업됩니다.
+       이를 극복하기 위해 display: flex는 고정해 두고, 투명도(opacity)와 마우스 이벤트 차단(pointer-events), 시각적 노출 여부(visibility)를 
+       조합하여 0.25초 동안 물 흐르듯 사르르 커지며 떠오르는 프리미엄급 트랜지션을 제공합니다. */
+    display: flex !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translate(-50%, -50%) scale(0.95) !important;
+    transition: opacity 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                visibility 0.25s !important;
+  }
+
+  /* show-mobile-popup 클래스가 동적으로 부여되었을 때 부드러운 트랜지션과 함께 팝업을 노출시킵니다. */
+  #selected-date-detail.show-mobile-popup {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
+
+  /* [교육용 주석] 
+     모바일 기기에서는 화면 세로 높이(Height)가 작기 때문에, 입력 항목이 많아지면 모달이 위아래로 잘려 하단의 저장 버튼을 누를 수 없는 현상이 발생합니다.
+     이를 완벽하게 해결하기 위해 모달 내용물(.modal-content)의 위아래 내부 패딩을 32px에서 18px로 줄이고, 
+     최대 세로 높이를 화면의 85%로 제한(max-height: 85vh)한 뒤, 넘치는 부분은 내부 세로 스크롤(overflow-y: auto)이 생기도록 처리했습니다. */
+  .modal-content {
+    padding: 18px 20px !important;
+    border-radius: 16px !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 모바일 모달 내부 폼 요소의 간격 축소 */
+  .modal-content form {
+    gap: 12px !important;
+  }
+
+  /* 모바일 모달 타이틀 마진 및 폰트 축소 */
+  .modal-content h3 {
+    font-size: 1.25rem !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* [교육용 주석] 
+     모바일 기기에서는 입력 필드와 플레이스홀더만으로도 충분히 직관적으로 입력 의도를 알 수 있습니다.
+     따라서 수직 공간 낭비를 획득하고 모던 미니멀리즘 디자인을 연출하기 위해, 
+     모달 내부의 라벨(.input-label)을 숨기고 입력 그룹(.input-group) 간의 하단 여백도 16px에서 8px로 미세 조정하여 초간결 레이아웃을 다듬었습니다. */
+  .modal-content .input-label {
+    display: none !important;
+  }
+  .modal-content .input-group {
+    margin-bottom: 8px !important;
+    gap: 4px !important;
   }
 }

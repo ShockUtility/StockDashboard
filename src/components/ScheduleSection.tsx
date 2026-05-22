@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mic, Star, DollarSign, Lock, Pencil, Circle, Bot, Trash2 } from 'lucide-react';
+import { Mic, Star, DollarSign, Lock, Pencil, Circle, Bot, Trash2, RefreshCw, Plus } from 'lucide-react';
 import { CalendarEvent, ScheduleType } from '../types/schedule';
 import { AddScheduleModal } from './modals/AddScheduleModal';
 
@@ -93,7 +93,7 @@ export function ScheduleSection({
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  
+
   // 2. 사용자가 달력에서 선택한 날짜 상태 (포맷: YYYY-MM-DD)
   const [selectedDate, setSelectedDate] = useState<string>(
     today.toISOString().split('T')[0]
@@ -108,6 +108,11 @@ export function ScheduleSection({
 
   // 5. 삭제 확인 커스텀 모달 상태 관리
   const [deletingEvent, setDeletingEvent] = useState<CalendarEvent | null>(null);
+
+  // 6. [교육용 주석] 모바일 화면(가로 768px 이하)에서 달력 일자 셀을 터치했을 때 띄워줄 상세 일정 팝업 모달 노출 상태입니다.
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+
 
   // --- 달력 렌더링을 위한 수학적 연산 ---
   // 선택된 달의 1일 요일 (0: 일요일, 1: 월요일, ...)
@@ -235,7 +240,7 @@ export function ScheduleSection({
             (s) => s.code.toUpperCase() === evt.stockCode.toUpperCase()
           );
           const stockName = matchingStock ? matchingStock.name : evt.stockCode;
-          
+
           let enrichedTitle = evt.title;
           if (evt.stockCode && stockName && stockName !== evt.stockCode) {
             const upperCode = evt.stockCode.toUpperCase();
@@ -298,7 +303,15 @@ export function ScheduleSection({
       days.push(
         <div
           key={`day-${day}`}
-          onClick={() => setSelectedDate(dateKey)}
+          onClick={() => {
+            setSelectedDate(dateKey);
+            // [교육용 주석] 사용자가 스마트폰 등 좁은 화면(가로 768px 이하)에서 일자를 터치(클릭)했을 때에만
+            // 상세 목록을 콤팩트한 글래스모피즘 모달 팝업으로 띄우도록 설정하여 모바일 UX 가독성을 높입니다.
+            if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+              setShowMobileDetail(true);
+            }
+          }}
+          className="calendar-grid-cell"
           style={{
             height: '100%',
             minWidth: 0, // [교육용 주석] 그리드 셀이 텍스트 길이에 늘어나지 않게 최소 너비를 0으로 강제합니다.
@@ -306,13 +319,13 @@ export function ScheduleSection({
             boxSizing: 'border-box',
             padding: '4px 6px',
             borderRadius: '12px',
-            border: isSelected 
-              ? '1.5px solid var(--accent-blue)' 
+            border: isSelected
+              ? '1.5px solid var(--accent-blue)'
               : '1px solid rgba(255,255,255,0.05)',
-            background: isSelected 
-              ? 'rgba(59, 130, 246, 0.1)' 
-              : isToday 
-                ? 'rgba(255,255,255,0.08)' 
+            background: isSelected
+              ? 'rgba(59, 130, 246, 0.1)'
+              : isToday
+                ? 'rgba(255,255,255,0.08)'
                 : 'rgba(255,255,255,0.02)',
             cursor: 'pointer',
             transition: 'all 0.2s',
@@ -330,6 +343,9 @@ export function ScheduleSection({
           }}
         >
           {/* 날짜 표시 */}
+          {/* [교육용 주석] 
+              오늘 날짜일 때 우상단에 표시되던 파란색 "오늘" 텍스트 배지를 완전히 제거했습니다.
+              대신 오늘 날짜임을 한눈에 식별할 수 있도록 아래 span 태그의 굵은 파란색 텍스트 강조(color: var(--accent-blue), fontWeight: bold)는 그대로 유지하여 복잡하지 않고 직관적인 UI를 제공합니다. */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{
               fontWeight: isToday ? 'bold' : 'normal',
@@ -338,27 +354,17 @@ export function ScheduleSection({
             }}>
               {day}
             </span>
-            {isToday && (
-              <span style={{
-                fontSize: '0.65rem',
-                background: 'var(--accent-blue)',
-                padding: '2px 6px',
-                borderRadius: '8px',
-                color: 'white'
-              }}>
-                오늘
-              </span>
-            )}
           </div>
 
           {/* 등록된 일정이 있다면 도트 또는 텍스트 목록 배지 렌더링 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5px', marginTop: '6px', width: '100%', minWidth: 0 }}>
+          <div className="calendar-events-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5px', marginTop: '6px', width: '100%', minWidth: 0 }}>
             {dateEvents.slice(0, dateEvents.length > 5 ? 4 : 5).map((event) => {
               const badge = getTypeBadge(event.type);
               const SvgIcon = badge.icon;
               return (
                 <div
                   key={event.id}
+                  className="calendar-event-badge"
                   style={{
                     fontSize: '0.62rem',
                     background: badge.bg,
@@ -391,44 +397,46 @@ export function ScheduleSection({
                          - 신규상장(IPO) -> "신규상장"
                          - 학회/콘퍼런스(CONFERENCE) -> "학회/세미나"
                          - 기타일정(OTHER) -> 원래 제목에서 이모지 제거하여 표시 */}
-                  {(() => {
-                    // [교육용 주석] event.stockName이 티커 코드와 같거나 누락되었을 경우, 포트폴리오 내의 실제 이름을 찾아 매핑합니다.
-                    let resolvedName = event.stockName;
-                    if (!resolvedName || resolvedName === event.stockCode) {
-                      resolvedName = getStockNameByCode(event.stockCode);
-                    }
+                  <span className="desktop-only" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      // [교육용 주석] event.stockName이 티커 코드와 같거나 누락되었을 경우, 포트폴리오 내의 실제 이름을 찾아 매핑합니다.
+                      let resolvedName = event.stockName;
+                      if (!resolvedName || resolvedName === event.stockCode) {
+                        resolvedName = getStockNameByCode(event.stockCode);
+                      }
 
-                    const hasValidName = resolvedName && resolvedName !== event.stockCode;
-                    const prefix = hasValidName ? `[${resolvedName}] ` : '';
-                    
-                    let displayName = '';
-                    switch (event.type) {
-                      case 'DIVIDEND':
-                        displayName = '배당금';
-                        break;
-                      case 'EX_DIVIDEND':
-                        displayName = '배당락';
-                        break;
-                      case 'EARNINGS':
-                        displayName = '실적발표';
-                        break;
-                      case 'IPO':
-                        displayName = '신규상장';
-                        break;
-                      case 'CONFERENCE':
-                        displayName = '학회/세미나';
-                        break;
-                      default:
-                        displayName = getDisplayTitle(event);
-                    }
-                    
-                    return `${prefix}${displayName}`;
-                  })()}
+                      const hasValidName = resolvedName && resolvedName !== event.stockCode;
+                      const prefix = hasValidName ? `[${resolvedName}] ` : '';
+
+                      let displayName = '';
+                      switch (event.type) {
+                        case 'DIVIDEND':
+                          displayName = '배당금';
+                          break;
+                        case 'EX_DIVIDEND':
+                          displayName = '배당락';
+                          break;
+                        case 'EARNINGS':
+                          displayName = '실적발표';
+                          break;
+                        case 'IPO':
+                          displayName = '신규상장';
+                          break;
+                        case 'CONFERENCE':
+                          displayName = '학회/세미나';
+                          break;
+                        default:
+                          displayName = getDisplayTitle(event);
+                      }
+
+                      return `${prefix}${displayName}`;
+                    })()}
+                  </span>
                 </div>
               );
             })}
             {dateEvents.length > 5 && (
-              <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textAlign: 'right', fontWeight: 'bold', paddingRight: '4px', marginTop: '1.5px' }}>
+              <div className="desktop-only" style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textAlign: 'right', fontWeight: 'bold', paddingRight: '4px', marginTop: '1.5px' }}>
                 +{dateEvents.length - 4}개 더보기
               </div>
             )}
@@ -446,7 +454,7 @@ export function ScheduleSection({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
       {/* 상단 컨트롤 및 헤더 영역 */}
       <header className="glass-panel" style={{
         display: 'flex', flexDirection: 'column',
@@ -455,27 +463,35 @@ export function ScheduleSection({
         overflow: 'hidden'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button className="glass-button" onClick={handlePrevMonth} style={{ width: 'auto', padding: '8px 16px' }}>◀ 이전 달</button>
-            <h2 style={{ margin: 0, fontSize: '1.4rem', minWidth: '120px', textAlign: 'center' }}>
+          {/* [교육용 주석] 사용자의 요청에 따라 년월 라벨과의 간격(gap)을 16px에서 6px로 오밀조밀하게 대폭 좁혔습니다. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* [교육용 주석] 버튼 좌우 크기를 좁히기 위해 좌우 padding을 14px에서 10px로 축소하고 상하 패딩도 6px로 다듬었습니다. */}
+            <button className="glass-button" onClick={handlePrevMonth} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.9rem' }}>◀</button>
+            {/* 년월 표기 라벨의 minWidth를 auto로 풀어서 가로로 필요 없는 낭비 공간을 최소화했습니다. */}
+            <h2 style={{ margin: 0, fontSize: '1.25rem', minWidth: 'auto', textAlign: 'center', padding: '0 4px' }}>
               {currentYear}년 {currentMonth + 1}월
             </h2>
-            <button className="glass-button" onClick={handleNextMonth} style={{ width: 'auto', padding: '8px 16px' }}>다음 달 ▶</button>
+            <button className="glass-button" onClick={handleNextMonth} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.9rem' }}>▶</button>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {/* [교육용 주석] 전체 종목 일정을 한 번에 일괄 수집하는 초고속 업데이트 버튼입니다. */}
+            {/* [교육용 주석] 
+                일정 업데이트 버튼: 이모지 대신 Sparkles 흰색 벡터 아이콘을 사용하고,
+                모바일에서는 라벨 텍스트가 숨겨져 아이콘만 단독 표시됩니다. */}
             <button
-              className="glass-button"
+              className="glass-button schedule-action-btn"
               onClick={handleAllStocksUpdate}
               disabled={aiLoading}
               style={{
-                width: 'auto', padding: '10px 20px',
-                background: aiLoading 
-                  ? 'rgba(255,255,255,0.05)' 
+                width: 'auto',
+                background: aiLoading
+                  ? 'rgba(255,255,255,0.05)'
                   : 'linear-gradient(135deg, #10b981, #3b82f6)',
                 color: 'white',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
               {aiLoading ? (
@@ -485,27 +501,34 @@ export function ScheduleSection({
                     borderTopColor: 'transparent', borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }} />
-                  분석 중...
+                  <span className="desktop-only">분석 중...</span>
                 </span>
               ) : (
-                '🪄 일정 업데이트'
+                <>
+                  <RefreshCw size={16} strokeWidth={2.5} color="white" />
+                  <span className="desktop-only">일정 업데이트</span>
+                </>
               )}
             </button>
 
+            {/* [교육용 주석] 
+                일정 추가 버튼: 이모지 대신 Plus 흰색 벡터 아이콘으로 교체하고,
+                모바일에서는 라벨을 숨기고 아이콘만 표시합니다. */}
             <button
-              className="glass-button"
+              className="glass-button schedule-action-btn"
               onClick={() => { setEditingEvent(null); setShowAddModal(true); }}
-              style={{ width: 'auto', padding: '10px 20px', background: 'rgba(59, 130, 246, 0.3)' }}
+              style={{ width: 'auto', background: 'rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              ➕ 일정 추가
+              <Plus size={16} strokeWidth={2.5} color="white" />
+              <span className="desktop-only">일정 추가</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* 대시보드 2컬럼 레이아웃 */}
-      <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 380px', gap: '24px' }}>
-        
+      <div className="schedule-grid">
+
         {/* 왼쪽: 커스텀 달력 그리드 */}
         <section className="glass-panel" style={{ padding: '24px' }}>
           {/* 요일 헤더 */}
@@ -530,7 +553,11 @@ export function ScheduleSection({
           </div>
 
           {/* 달력 날짜 카드 격자 */}
-          <div style={{
+          {/* [교육용 주석]
+              모바일 화면에서 인라인 스타일로 지정된 gridAutoRows: '140px' 및 gap: '8px' 속성이 그대로 고정되어 셀의 간격이 비정상적으로 벌어지던 현상을 해결하기 위해
+              여기에 'calendar-grid-container' 클래스명을 새롭게 부여했습니다.
+              이를 통해 globals.css의 모바일 미디어 쿼리에서 세로 행 높이를 75px로, 간격을 4px로 조화롭게 덮어쓸 수 있도록 지원합니다. */}
+          <div className="calendar-grid-container" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
             gridAutoRows: '140px', // [교육용 주석] 일정 5줄이 더 여유롭고 쾌적하게 표시되도록 세로 공간을 140px로 미세 조정했습니다.
@@ -541,7 +568,10 @@ export function ScheduleSection({
         </section>
 
         {/* 오른쪽: 선택된 날짜의 일정 상세 정보 */}
-        <section className="glass-panel" style={{
+        {/* [교육용 주석] 
+            showMobileDetail 상태에 따라 모바일 팝업 활성화 클래스인 'show-mobile-popup'을 동적으로 토글시킵니다.
+            데스크톱에서는 이 클래스가 들어가더라도 globals.css의 데스크톱 스타일 규칙에 영향을 미치지 않으므로 평온하게 기존 2열 레이아웃이 유지됩니다. */}
+        <section id="selected-date-detail" className={`glass-panel ${showMobileDetail ? 'show-mobile-popup' : ''}`} style={{
           display: 'flex', flexDirection: 'column', padding: '24px', justifyContent: 'flex-start'
         }}>
           <h3 style={{
@@ -550,9 +580,35 @@ export function ScheduleSection({
             alignItems: 'baseline'
           }}>
             <span>📅 {selectedY}년 {selectedM}월 {selectedD}일</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              일정 {selectedDateEvents.length}개
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                일정 {selectedDateEvents.length}개
+              </span>
+              {/* [교육용 주석]
+                  모바일 팝업 모달이 활성화되었을 때만 노출되는 X 모양의 직관적인 닫기 버튼을 주입합니다.
+                  이 버튼은 데스크톱 등 넓은 화면에서는 CSS 클래스(mobile-only)에 의해 보이지 않도록 숨김 처리됩니다. */}
+              <button
+                className="mobile-only"
+                onClick={() => setShowMobileDetail(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: 'var(--text-secondary)',
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.85rem',
+                  padding: 0,
+                  transition: 'background 0.2s'
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </h3>
 
           <div style={{
@@ -604,20 +660,20 @@ export function ScheduleSection({
                             {/* [교육용 주석] 
                                 종목 이름(stockName)이 존재하고 티커 코드(stockCode)와 다를 때만 '이름 (티커)'로 표시하고,
                                 이름이 누락되었거나 티커와 동일한 경우에는 티커 하나만 깔끔하게 표시하여 중복 표기를 방지합니다. */}
-                            🔗 연동 종목: {event.stockName && event.stockName !== event.stockCode 
-                              ? `${event.stockName} (${event.stockCode})` 
+                            🔗 연동 종목: {event.stockName && event.stockName !== event.stockCode
+                              ? `${event.stockName} (${event.stockCode})`
                               : event.stockCode}
                           </span>
                         )}
                       </div>
-                      
+
                       {/* [교육용 주석]
                           로봇 아이콘을 일정 분류 아이콘 왼쪽에 정렬하여 배치하고,
                           일정 분류 뱃지는 라벨을 없애고 콤팩트한 아이콘으로만 표기하며
                           마우스 오버 시 툴팁(title)으로 상세 내용을 보여주어 고급스러운 UX를 연출합니다. */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         {event.isAI && (
-                          <span 
+                          <span
                             title="자동 수집"
                             style={{
                               fontSize: '0.65rem',
@@ -635,20 +691,20 @@ export function ScheduleSection({
                             <Bot size={13} strokeWidth={2.5} />
                           </span>
                         )}
-                        
-                        <span 
+
+                        <span
                           title={badge.text}
                           style={{
-                            fontSize: '0.65rem', 
-                            background: badge.bg, 
+                            fontSize: '0.65rem',
+                            background: badge.bg,
                             color: badge.color,
                             border: `1.5px solid ${badge.borderColor}`,
-                            padding: '5px', 
-                            borderRadius: '6px', 
-                            fontWeight: 'bold', 
+                            padding: '5px',
+                            borderRadius: '6px',
+                            fontWeight: 'bold',
                             whiteSpace: 'nowrap',
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
+                            display: 'inline-flex',
+                            alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer'
                           }}
@@ -658,11 +714,11 @@ export function ScheduleSection({
                       </div>
                     </div>
 
-                     {(() => {
+                    {(() => {
                       // [교육용 주석] 단순 영문 기본 명칭 데이터(Dividend Date, Ex-Dividend Date 등)는 상세 설명에 노출하지 않도록 차단 처리합니다.
                       const desc = event.description?.trim();
                       if (!desc) return null;
-                      
+
                       const ignoreDescriptions = [
                         'earnings date',
                         'dividend date',
@@ -729,10 +785,24 @@ export function ScheduleSection({
             }}
             style={{ marginTop: '16px', background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' }}
           >
-            ➕ 일정 추가
+            + 일정 추가
           </button>
         </section>
       </div>
+
+
+
+      {/* [교육용 주석] 
+          모바일 화면에서 날짜를 클릭해 상세 팝업이 활성화되었을 때, 
+          달력과 뒷배경 요소를 어둡게 딤(Dim) 아웃 처리하여 모달에 시선을 집중시켜주는 반응형 투명 오버레이입니다. 
+          데스크톱 환경에서는 CSS에 의해 자동으로 나타나지 않습니다. */}
+      {showMobileDetail && (
+        <div 
+          className="mobile-only modal-overlay" 
+          onClick={() => setShowMobileDetail(false)} 
+          style={{ zIndex: 1000, opacity: 1, display: 'flex' }} 
+        />
+      )}
 
       {/* 일정 등록 및 편집 모달 */}
       {/* [교육용 주석] 
@@ -761,7 +831,7 @@ export function ScheduleSection({
 
       {/* 커스텀 삭제 확인 모달 (글래스모피즘 프리미엄 디자인 적용) */}
       {deletingEvent && (
-        <div className="modal-overlay" style={{ display: 'flex', opacity: 1, zIndex: 120 }}>
+        <div className="modal-overlay" style={{ display: 'flex', opacity: 1 }}>
           <div className="modal-content" style={{ transform: 'scale(1)', maxWidth: '440px' }}>
             <button className="modal-close" onClick={() => setDeletingEvent(null)} aria-label="닫기">
               ✕

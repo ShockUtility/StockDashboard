@@ -8,6 +8,7 @@ import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useCalculations, getSortedAssets } from '../hooks/useCalculations';
 import { formatMoney, COLORS } from '../utils/format';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Menu, Landmark, DollarSign, TrendingUp, Calendar } from 'lucide-react';
 
 // UI Components
 import { DashboardSummary } from '../components/DashboardSummary';
@@ -61,7 +62,7 @@ export default function Home() {
 
   const getCategoryColor = (name: string, index: number) => {
     if (name.includes('현금')) return '#f59e0b'; // Amber
-    if (name.includes('커스텀')) return '#10b981'; // Green
+    if (name.includes('기타')) return '#10b981'; // Green
     if (name.includes('한국')) return '#3b82f6'; // Blue
     if (name.includes('미국')) return '#8b5cf6'; // Purple
     return COLORS[index % COLORS.length];
@@ -77,6 +78,7 @@ export default function Home() {
   const [pendingStockIds, setPendingStockIds] = useState<string[]>([]);
 
   // Modals State
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showPieModal, setShowPieModal] = useState(false);
   const [pieModalTitle, setPieModalTitle] = useState("");
   const [pieModalData, setPieModalData] = useState<{ name: string, value: number }[]>([]);
@@ -258,7 +260,7 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        
+
         if (json.version === '3.0' && Array.isArray(json.portfolios)) {
           setPortfolios(json.portfolios);
           if (json.schedules && Array.isArray(json.schedules)) {
@@ -300,23 +302,58 @@ export default function Home() {
   if (!isMounted) return null;
 
   return (
-    <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto' }}>
+    <main style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .clickable-stock-name:hover strong { color: #c4b5fd; }
       `}</style>
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '48px' }}>
-        <div>
-          <h1 className="gradient-text" style={{ fontSize: '2.5rem', textAlign: 'left', marginBottom: '10px', marginTop: 0 }}>내 자산 포트폴리오 Vibe</h1>
-          <p className="text-secondary" style={{ textAlign: 'left', margin: 0 }}>주식부터 금현물까지, 실시간 자산 현황을 한눈에 관리하세요.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="glass-button" style={{ padding: '8px 20px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.2)', whiteSpace: 'nowrap' }} onClick={handleExport}>⬇️ 데이터 내보내기</button>
-          <button className="glass-button" style={{ padding: '8px 20px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(139, 92, 246, 0.2)', whiteSpace: 'nowrap' }} onClick={() => { if (confirm('기존 데이터가 덮어쓰기 됩니다.')) fileInputRef.current?.click(); }}>⬆️ 데이터 불러오기</button>
-          <button className="glass-button" style={{ padding: '8px 20px', fontSize: '0.85rem', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', whiteSpace: 'nowrap' }} onClick={handleResetData}>🗑️ 초기화</button>
-          <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportFileChange} style={{ display: 'none' }} />
-        </div>
+      {/* [교육용 주석] 
+          설정 메뉴를 헤더에서 분리하여 position: fixed로 화면 우측 상단에 항상 고정 배치합니다.
+          스크롤을 해도 화면에 떠 있어 언제든 메뉴에 접근할 수 있습니다. */}
+      <div className="settings-menu-container">
+        <button
+          className="glass-button"
+          style={{
+            padding: '10px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid var(--glass-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '42px',
+            height: '42px'
+          }}
+          onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+          aria-label="설정 메뉴"
+        >
+          <Menu size={20} color="white" strokeWidth={2} />
+        </button>
+
+        {showSettingsMenu && (
+          <>
+            {/* 뒷배경 클릭 시 닫히도록 투명 오버레이 배치 */}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setShowSettingsMenu(false)} />
+            <div className={`settings-dropdown ${showSettingsMenu ? 'show' : ''}`} style={{ zIndex: 1000 }}>
+              <button className="settings-menu-item" onClick={() => { setShowSettingsMenu(false); handleExport(); }}>
+                ⬇️ 데이터 내보내기
+              </button>
+              <button className="settings-menu-item" onClick={() => { setShowSettingsMenu(false); if (confirm('기존 데이터가 덮어쓰기 됩니다.')) fileInputRef.current?.click(); }}>
+                ⬆️ 데이터 불러오기
+              </button>
+              <button className="settings-menu-item danger" onClick={() => { setShowSettingsMenu(false); handleResetData(); }}>
+                🗑️ 초기화
+              </button>
+            </div>
+          </>
+        )}
+        <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportFileChange} style={{ display: 'none' }} />
+      </div>
+
+      <header style={{ marginBottom: '48px' }}>
+        <h1 className="gradient-text" style={{ fontSize: '2.5rem', textAlign: 'left', marginBottom: '10px', marginTop: 0 }}>자산 포트폴리오</h1>
+        <p className="text-secondary" style={{ textAlign: 'left', margin: 0 }}>주식부터 금현물까지, 실시간 자산 현황을 한눈에 관리하세요.</p>
       </header>
 
       <div className="dashboard-grid" style={{ marginBottom: '32px' }}>
@@ -366,22 +403,33 @@ export default function Home() {
       </div>
 
       <div style={{ position: 'sticky', top: '0', zIndex: 100, backdropFilter: 'blur(10px)', marginBottom: '32px', paddingTop: '20px' }}>
-        <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+        {/* [교육용 주석] 탭 버튼 간의 좌우 갭(gap)을 6px에서 4px로 좁혀 좁은 공간에서도 가독성을 극대화하도록 정렬했습니다. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 4px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+          {/* 
+              [교육용 주석] 
+              1. 탭 버튼의 글자 크기를 1rem(16px)에서 0.9rem(14.4px)으로 축소하여 콤팩트하고 스마트한 느낌을 주었습니다.
+              2. 이에 맞춰 lucide-react의 아이콘 크기도 size={16}에서 size={14}로 동반 축소하여 시각적 밸런스를 맞췄습니다.
+              3. 탭 버튼의 좌우 패딩을 6px에서 4px로, 아이콘과 텍스트 사이의 갭을 4px에서 3px로 좁게 세밀하게 가다듬었습니다.
+          */}
           <button
             onClick={() => setActiveMainTab('MANAGE')}
             style={{
               background: 'none',
               border: 'none',
               color: activeMainTab === 'MANAGE' ? 'var(--accent-blue)' : 'var(--text-secondary)',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               fontWeight: 600,
               cursor: 'pointer',
               position: 'relative',
-              padding: '4px 8px',
-              transition: 'all 0.3s'
+              padding: '4px 4px',
+              transition: 'all 0.3s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px'
             }}
           >
-            <span>📂</span> 계좌 관리
+            <Landmark size={14} strokeWidth={2.5} />
+            계좌관리
             {activeMainTab === 'MANAGE' && (
               <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
             )}
@@ -392,15 +440,19 @@ export default function Home() {
               background: 'none',
               border: 'none',
               color: activeMainTab === 'ASSET' ? 'var(--accent-blue)' : 'var(--text-secondary)',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               fontWeight: 600,
               cursor: 'pointer',
               position: 'relative',
-              padding: '4px 8px',
-              transition: 'all 0.3s'
+              padding: '4px 4px',
+              transition: 'all 0.3s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px'
             }}
           >
-            <span>📊</span> 자산별 현황
+            <DollarSign size={14} strokeWidth={2.5} />
+            자산현황
             {activeMainTab === 'ASSET' && (
               <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
             )}
@@ -411,15 +463,19 @@ export default function Home() {
               background: 'none',
               border: 'none',
               color: activeMainTab === 'INDEX' ? 'var(--accent-blue)' : 'var(--text-secondary)',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               fontWeight: 600,
               cursor: 'pointer',
               position: 'relative',
-              padding: '4px 8px',
-              transition: 'all 0.3s'
+              padding: '4px 4px',
+              transition: 'all 0.3s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px'
             }}
           >
-            <span>📈</span> 지수 현황
+            <TrendingUp size={14} strokeWidth={2.5} />
+            지수현황
             {activeMainTab === 'INDEX' && (
               <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
             )}
@@ -431,15 +487,19 @@ export default function Home() {
               background: 'none',
               border: 'none',
               color: activeMainTab === 'SCHEDULE' ? 'var(--accent-blue)' : 'var(--text-secondary)',
-              fontSize: '1rem',
+              fontSize: '0.9rem',
               fontWeight: 600,
               cursor: 'pointer',
               position: 'relative',
-              padding: '4px 8px',
-              transition: 'all 0.3s'
+              padding: '4px 4px',
+              transition: 'all 0.3s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px'
             }}
           >
-            <span>📅</span> 주요일정
+            <Calendar size={14} strokeWidth={2.5} />
+            주요일정
             {activeMainTab === 'SCHEDULE' && (
               <div style={{ position: 'absolute', bottom: '-9px', left: 0, right: 0, height: '2px', background: 'var(--accent-blue)' }} />
             )}

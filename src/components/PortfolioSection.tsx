@@ -119,8 +119,8 @@ export const PortfolioSection = ({
           />
         </div>
 
-        <div className="header-stats" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+        <div className="header-stats" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)', whiteSpace: 'nowrap' }}>
             <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500 }}>총 평가액:</span>
             <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>{formatMoney(pTotalAssetKRW, 'KRW')}</strong>
           </div>

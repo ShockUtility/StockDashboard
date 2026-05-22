@@ -51,7 +51,7 @@ export function useCalculations(portfolios: Portfolio[], exchangeRate: number) {
     const totalPieData: { name: string, value: number }[] = [];
     if (weightMap['KR_STOCK'] > 0) totalPieData.push({ name: '🇰🇷 한국 주식', value: weightMap['KR_STOCK'] });
     if (weightMap['US_STOCK'] > 0) totalPieData.push({ name: '🇺🇸 미국 주식', value: weightMap['US_STOCK'] });
-    if (weightMap['CUSTOM'] > 0) totalPieData.push({ name: '🏅 커스텀 자산', value: weightMap['CUSTOM'] });
+    if (weightMap['CUSTOM'] > 0) totalPieData.push({ name: '🏅 기타 자산', value: weightMap['CUSTOM'] });
     if (weightMap['CASH'] > 0) totalPieData.push({ name: '💵 현금', value: weightMap['CASH'] });
     totalPieData.sort((a, b) => b.value - a.value);
 
@@ -97,7 +97,7 @@ export function getSortedAssets(assets: Asset[], config: SortConfig | null, exch
     // 각 자산의 통화에 맞는 환율을 적용합니다.
     const aRate = a.currency === 'USD' ? exchangeRate : 1;
     const bRate = b.currency === 'USD' ? exchangeRate : 1;
-    
+
     // [교육용 설명]
     // 이전에는 환율을 곱하지 않아 1000달러가 100000원보다 작게 인식되었으나,
     // 이제는 환율(예: 1300원)을 곱한 원화 환산 금액으로 정합성 있게 비교합니다.
@@ -105,7 +105,7 @@ export function getSortedAssets(assets: Asset[], config: SortConfig | null, exch
     const bInvest = (b.avgPrice * b.quantity) * bRate;
     const aCurrent = (a.currentPrice * a.quantity) * aRate;
     const bCurrent = (b.currentPrice * b.quantity) * bRate;
-    
+
     switch (key) {
       case 'name': aVal = a.name; bVal = b.name; break;
       case 'quantity': aVal = a.quantity; bVal = b.quantity; break;

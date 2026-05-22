@@ -116,7 +116,7 @@ export const AddStockModal = ({ isOpen, onClose, type, setType, code, setCode, a
               transition: 'all 0.2s'
             }}
           >
-            🏅 커스텀
+            🏅 기타
           </button>
           <button
             type="button"

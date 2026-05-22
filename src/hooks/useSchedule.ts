@@ -52,7 +52,7 @@ export function useSchedule() {
   const editSchedule = (id: string, updatedEvent: Omit<CalendarEvent, 'id' | 'isAI'>) => {
     setSchedules((prev) =>
       prev.map((event) =>
-        event.id === id 
+        event.id === id
           ? { ...event, ...updatedEvent, isAI: event.isAI } // 편집하더라도 생성 시 정해진 isAI 속성을 그대로 유지합니다.
           : event
       )

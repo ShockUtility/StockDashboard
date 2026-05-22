@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 // Recharts 라이브러리에서 필요한 컴포넌트들을 가져옵니다.
 import { LineChart, Line, YAxis, ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from 'recharts';
+import { RefreshCw } from 'lucide-react';
 
 interface SparklinePoint {
   date: string;
@@ -405,19 +406,7 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
             disabled={indicesLoading || loading}
             title="새로고침"
           >
-            <svg 
-              width="16" height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              style={{ animation: (indicesLoading || loading) ? 'spin 1s linear infinite' : 'none' }}
-            >
-              <path d="M23 4v6h-6"></path>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
+            <RefreshCw size={16} strokeWidth={2.5} style={{ animation: (indicesLoading || loading) ? 'spin 1s linear infinite' : 'none' }} />
           </button>
         </div>
         {!indicesCollapsed && renderGrid(mainIndices, indicesLoading || (loading && data[0].currentPrice === undefined))}
@@ -450,19 +439,7 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
             disabled={ratesLoading || loading}
             title="새로고침"
           >
-            <svg 
-              width="16" height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              style={{ animation: (ratesLoading || loading) ? 'spin 1s linear infinite' : 'none' }}
-            >
-              <path d="M23 4v6h-6"></path>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
+            <RefreshCw size={16} strokeWidth={2.5} style={{ animation: (ratesLoading || loading) ? 'spin 1s linear infinite' : 'none' }} />
           </button>
         </div>
         {!ratesCollapsed && renderGrid(exchangeRates, ratesLoading || (loading && data[0].currentPrice === undefined))}

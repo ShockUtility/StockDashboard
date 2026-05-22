@@ -88,12 +88,12 @@ export const AssetStatusSection = ({
       {/* 미국 주식 */}
       <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
         <div>
-          <div className="flex-between">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }} onClick={() => setCollapsedUS(prev => !prev)}>
+          <div className="flex-between" style={{ flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: '1 1 auto', minWidth: '250px' }} onClick={() => setCollapsedUS(prev => !prev)}>
               <span style={{ fontSize: '1.2rem', transform: collapsedUS ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', display: 'inline-block' }}>▼</span>
               <div><h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>🇺🇸 미국 주식 통합 현황</h2></div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flexShrink: 0 }}>
               <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                 <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}>총 평가액:</span>
                 <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{formatMoney(totalUSCurrent, 'USD')}</strong>
@@ -102,7 +102,8 @@ export const AssetStatusSection = ({
               <button
                 className="glass-button"
                 style={{ width: '40px', height: '40px', padding: 0, borderRadius: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)', color: '#fff', flexShrink: 0 }}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation(); // 접기 클릭 전파 방지
                   const usPieData = aggregatedUSStocks.map(s => ({ name: s.name, value: s.currentPrice * s.quantity }));
                   onShowPieChart('🇺🇸 미국 주식 비중 현황', usPieData);
                 }}
@@ -202,12 +203,12 @@ export const AssetStatusSection = ({
       {/* 한국 주식 */}
       <section className="glass-panel" style={{ padding: '24px', overflow: 'hidden' }}>
         <div>
-          <div className="flex-between">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: 1 }} onClick={() => setCollapsedKR(prev => !prev)}>
+          <div className="flex-between" style={{ flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', flex: '1 1 auto', minWidth: '250px' }} onClick={() => setCollapsedKR(prev => !prev)}>
               <span style={{ fontSize: '1.2rem', transform: collapsedKR ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.3s', display: 'inline-block' }}>▼</span>
               <div><h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>🇰🇷 한국 주식 통합 현황</h2></div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flexShrink: 0 }}>
               <div className="stat-badge" style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '40px', background: 'rgba(0,0,0,0.3)', padding: '0 20px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                 <span className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500, whiteSpace: 'nowrap' }}>총 평가액:</span>
                 <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{formatMoney(totalKRCurrent, 'KRW')}</strong>
@@ -215,7 +216,8 @@ export const AssetStatusSection = ({
               <button
                 className="glass-button"
                 style={{ width: '40px', height: '40px', padding: 0, borderRadius: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)', color: '#fff', flexShrink: 0 }}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation(); // 접기 클릭 전파 방지
                   const krPieData = aggregatedKRStocks.map(s => ({ name: s.name, value: s.currentPrice * s.quantity }));
                   onShowPieChart('🇰🇷 한국 주식 비중 현황', krPieData);
                 }}

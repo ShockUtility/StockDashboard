@@ -1,4 +1,5 @@
 import { formatMoney } from '../utils/format';
+import { RefreshCw } from 'lucide-react';
 
 interface DashboardSummaryProps {
   totalInvestmentKRW: number;
@@ -31,49 +32,46 @@ export const DashboardSummary = ({
 }: DashboardSummaryProps) => {
   return (
     <section className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      <div className="flex-between" style={{ alignItems: 'flex-start' }}>
+      {/* [교육용 주석] 
+          '💎 전체 자산 요약' 타이틀을 좌측 상단에 배치하고, 
+          환율 배지 + 시세 새로고침 버튼을 우측 상단에 배치합니다. 
+          데스크톱에서는 "환율 : $1 = ₩X,XXX" 형태로 접두사를 추가하여 정보를 명확히 전달합니다. */}
+      <div className="flex-between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            💎 전체 자산 요약
+            💎 전체 자산
           </h2>
           <p className="text-secondary" style={{ marginTop: '4px', fontSize: '0.9rem' }}>실시간 시세와 환율이 반영된 총 자산 현황입니다.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <div
             onClick={onShowExchangeModal}
             style={{
               fontSize: '0.875rem',
               color: 'var(--text-secondary)',
               background: 'rgba(255,255,255,0.05)',
-              padding: '6px 16px',
+              padding: '6px 12px',
               borderRadius: '20px',
               border: '1px solid rgba(255,255,255,0.1)',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '4px',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
             }}
             className="hover-bright"
             title="환율 변동 차트 보기"
           >
-            <span style={{ color: '#3b82f6' }}>●</span> 환율: 1 USD = {exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KRW
+            <span style={{ color: '#3b82f6' }}>●</span>
+            <span className="desktop-only">환율 : </span>
+            {`$1 = ₩${Math.round(exchangeRate).toLocaleString()}`}
           </div>
-          <button className="glass-button" style={{ width: 'auto', padding: '8px 20px', fontSize: '0.875rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={onRefreshPrices} disabled={loading}>
-            <svg 
-              width="16" height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}
-            >
-              <path d="M23 4v6h-6"></path>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-            {loading ? `업데이트 중... (${refreshIndex} / ${totalStockCount})` : '시세 새로고침'}
+          <button className="glass-button" style={{ width: 'auto', padding: '8px 12px', fontSize: '0.875rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }} onClick={onRefreshPrices} disabled={loading}>
+            <RefreshCw size={16} strokeWidth={2.5} style={{ animation: loading ? 'spin 1s linear infinite' : 'none', flexShrink: 0 }} />
+            <span className="desktop-only" style={{ marginLeft: '4px' }}>
+              {loading ? `업데이트 중... (${refreshIndex} / ${totalStockCount})` : '시세 새로고침'}
+            </span>
           </button>
         </div>
       </div>
@@ -125,19 +123,24 @@ export const DashboardSummary = ({
         </div>
       </div>
 
-      <div className="cash-details" style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginTop: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
-        <div style={{ flex: 1 }}>
+      <div className="cash-details" style={{ display: 'flex', gap: '16px', marginTop: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
+        {/* [교육용 주석] 
+            모바일 화면(세로 정렬)일 때 달러 현금과 총보유현금의 좌측에 어색하게 세로 구분선(border-left)이 남아있지 않도록
+            인라인으로 선언되어 있던 borderLeft와 paddingLeft 속성을 지웠습니다.
+            대신 'cash-detail-col' 클래스를 부여하여 데스크톱 환경에서는 기존의 깔끔한 세로 구분선이 유지되고,
+            모바일 화면에서는 미디어 쿼리에 의해 자동으로 보더가 깔끔하게 사라지도록 스타일 구조를 개편했습니다. */}
+        <div className="cash-detail-col">
           <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>보유 현금 (KRW)</div>
           <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{formatMoney(totalKRWAssets, 'KRW')}</strong>
         </div>
-        <div style={{ flex: 1, borderLeft: '1px solid var(--glass-border)', paddingLeft: '16px' }}>
+        <div className="cash-detail-col">
           <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px' }}>보유 현금 (USD)</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <strong style={{ fontSize: '1.2rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{formatMoney(totalUSDAssets, 'USD')}</strong>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'nowrap' }}>≈ {formatMoney(totalUSDAssets * exchangeRate, 'KRW')}</span>
           </div>
         </div>
-        <div style={{ flex: 1, borderLeft: '1px solid var(--glass-border)', paddingLeft: '16px' }}>
+        <div className="cash-detail-col">
           <div className="text-secondary" style={{ fontSize: '0.8rem', marginBottom: '4px', color: '#f59e0b', fontWeight: 600 }}>총 보유 현금</div>
           <strong style={{ fontSize: '1.2rem', color: '#f59e0b', whiteSpace: 'nowrap' }}>{formatMoney(totalKRWAssets + (totalUSDAssets * exchangeRate), 'KRW')}</strong>
         </div>
