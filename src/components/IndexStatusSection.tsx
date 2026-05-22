@@ -54,34 +54,34 @@ const IndicatorDetailModal = ({ isOpen, onClose, item }: IndicatorDetailModalPro
   if (!isOpen) return null;
 
   // 차트에 사용할 데이터 가공 (30일치)
-  const chartData = item.sparklineData 
+  const chartData = item.sparklineData
     ? item.sparklineData.map((d) => {
-        const dateParts = d.date.split('-');
-        let displayDate = d.date;
-        
-        if (dateParts.length === 3) {
-          const month = parseInt(dateParts[1], 10);
-          const day = parseInt(dateParts[2], 10);
-          displayDate = `${month}월 ${day}일`;
-        }
-        
-        return {
-          value: d.value,
-          displayDate: displayDate,
-          fullDate: d.date
-        };
-      })
+      const dateParts = d.date.split('-');
+      let displayDate = d.date;
+
+      if (dateParts.length === 3) {
+        const month = parseInt(dateParts[1], 10);
+        const day = parseInt(dateParts[2], 10);
+        displayDate = `${month}월 ${day}일`;
+      }
+
+      return {
+        value: d.value,
+        displayDate: displayDate,
+        fullDate: d.date
+      };
+    })
     : [];
 
   const minVal = chartData.length > 0 ? Math.min(...chartData.map(d => d.value)) : 0;
   const maxVal = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : 100;
-  
+
   const domainMin = minVal - (maxVal - minVal) * 0.1;
   const domainMax = maxVal + (maxVal - minVal) * 0.1;
 
   const isUp = (item.changeAmount || 0) >= 0;
   const strokeColor = isUp ? 'var(--success-red)' : 'var(--danger-blue)';
-  const gradientColor = isUp ? '#ef4444' : '#3b82f6'; 
+  const gradientColor = isUp ? '#ef4444' : '#3b82f6';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -163,7 +163,7 @@ const initialData: IndicatorData[] = [
   { symbol: "HG=F", name: "국제 구리값" },
   { symbol: "BTC-USD", name: "비트코인" },
   { symbol: "ETH-USD", name: "이더리움" },
-  
+
   // 환율
   { symbol: "USD/KRW", name: "원/달러 환율" },
   { symbol: "EUR/KRW", name: "유로 (EUR/KRW)" },
@@ -191,14 +191,14 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
     if (type === 'indices') setIndicesLoading(true);
     if (type === 'rates') setRatesLoading(true);
     if (type === 'all') setLoading(true);
-    
+
     setError('');
     try {
       const url = type === 'all' ? '/api/indicators' : `/api/indicators?type=${type}`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
-        
+
         setData(prev => {
           let newData: IndicatorData[];
           if (type === 'all') {
@@ -215,13 +215,13 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
               }
             });
           }
-          
+
           // 로컬 스토리지에 캐시 저장 (5분 유효)
           if (typeof window !== 'undefined') {
             localStorage.setItem('indexStatusData', JSON.stringify(newData));
             localStorage.setItem('indexStatusTimestamp', Date.now().toString());
           }
-          
+
           return newData;
         });
       } else {
@@ -241,11 +241,11 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
     if (typeof window !== 'undefined') {
       const cachedData = localStorage.getItem('indexStatusData');
       const cachedTime = localStorage.getItem('indexStatusTimestamp');
-      
+
       if (cachedData && cachedTime) {
         const elapsed = Date.now() - parseInt(cachedTime, 10);
         const fiveMinutes = 5 * 60 * 1000;
-        
+
         // 5분이 지나지 않았으면 캐시 데이터 사용
         if (elapsed < fiveMinutes) {
           setData(JSON.parse(cachedData));
@@ -254,14 +254,14 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
         }
       }
     }
-    
+
     // 캐시가 없거나 5분이 지났으면 새로 가져옴
     fetchSectionData('all');
   }, []);
 
   // 환율 항목 정의 (필터링용)
   const exchangeSymbols = ['USD/KRW', 'JPY/KRW', 'EUR/KRW', 'CNY/KRW'];
-  
+
   // 데이터 분류
   const mainIndices = data.filter(item => !exchangeSymbols.includes(item.symbol));
   const exchangeRates = data.filter(item => exchangeSymbols.includes(item.symbol));
@@ -282,19 +282,19 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
         }
 
         return (
-          <div 
-            key={item.symbol} 
-            className="glass-panel hover-bright" 
-            style={{ 
-              padding: '16px', 
-              borderRadius: '12px', 
-              background: 'rgba(255,255,255,0.02)', 
-              border: '1px solid rgba(255,255,255,0.05)', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '12px', 
-              opacity: isSectionLoading ? 0.7 : 1, 
-              transition: 'opacity 0.2s', 
+          <div
+            key={item.symbol}
+            className="glass-panel hover-bright"
+            style={{
+              padding: '16px',
+              borderRadius: '12px',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              opacity: isSectionLoading ? 0.7 : 1,
+              transition: 'opacity 0.2s',
               minHeight: '130px',
               cursor: 'pointer'
             }}
@@ -311,7 +311,7 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
               <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>{item.symbol}</span>
             </div>
-            
+
             {item.error ? (
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 'auto' }}>에러: {item.error}</div>
             ) : (
@@ -334,7 +334,7 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
                         ? displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                         : displayPrice.toLocaleString()}
                     </div>
-                    
+
                     <div className={colorClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
                       <span>{isUp ? '▲' : '▼'} {Math.abs(item.changeAmount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       <span>({isUp ? '+' : ''}{(item.changePercent || 0).toFixed(2)}%)</span>
@@ -347,13 +347,13 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData}>
                           <YAxis domain={['auto', 'auto']} hide={true} />
-                          <Line 
-                            type="monotone" 
-                            dataKey="value" 
-                            stroke={strokeColor} 
-                            strokeWidth={2} 
-                            dot={false} 
-                            isAnimationActive={true} 
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke={strokeColor}
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={true}
                           />
                         </LineChart>
                       </ResponsiveContainer>
@@ -396,11 +396,11 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
               ▼
             </span>
             <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              📊 주요 지수 및 자산
+              주요 지수 및 자산
             </h3>
           </div>
-          <button 
-            className="glass-button" 
+          <button
+            className="glass-button"
             style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}
             onClick={() => fetchSectionData('indices', true)}
             disabled={indicesLoading || loading}
@@ -412,7 +412,7 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
         {!indicesCollapsed && renderGrid(mainIndices, indicesLoading || (loading && data[0].currentPrice === undefined))}
       </section>
 
-      {/* 실시간 환율 섹션 */}
+      {/* 환율 섹션 */}
       <section className="glass-panel">
         <div className="flex-between" style={{ marginBottom: ratesCollapsed ? '0' : '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -423,11 +423,11 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
               ▼
             </span>
             <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              💱 실시간 환율
+              환율
             </h3>
           </div>
-          <button 
-            className="glass-button" 
+          <button
+            className="glass-button"
             style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff' }}
             onClick={() => {
               fetchSectionData('rates', true);
@@ -447,10 +447,10 @@ export const IndexStatusSection = ({ externalExchangeRate, onRefreshExchangeRate
 
       {/* 팝업 모달 렌더링 */}
       {selectedItem && (
-        <IndicatorDetailModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          item={selectedItem} 
+        <IndicatorDetailModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          item={selectedItem}
         />
       )}
     </div>
