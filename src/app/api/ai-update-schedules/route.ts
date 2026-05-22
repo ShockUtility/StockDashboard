@@ -34,6 +34,8 @@ export async function POST(request: Request) {
     // 파이썬 인자 구성: [스크립트경로, 연도, 종목코드1, 종목코드2, ...]
     const args = [scriptPath, String(currentYear), ...codes];
 
+    console.log(`[금융 일정 업데이트] 시작 (대상 종목 수: ${codes.length})`);
+
     return new Promise<NextResponse>((resolve) => {
       const pyProcess = spawn(pythonExecutable, args);
 
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
       // 프로세스 종료 시 처리
       pyProcess.on('close', (codeStatus) => {
         if (codeStatus !== 0) {
-          console.error(`Python script exited with code ${codeStatus}`);
+          console.error(`[금융 일정 업데이트] 실패 (종료 코드: ${codeStatus})`);
           console.error('Error detail:', errorString);
           return resolve(
             NextResponse.json(
@@ -67,6 +69,7 @@ export async function POST(request: Request) {
           // 파이썬 출력 JSON 파싱
           const result = JSON.parse(dataString.trim());
           if (result.error) {
+            console.error(`[금융 일정 업데이트] 내부 에러 응답: ${result.error}`);
             return resolve(NextResponse.json({ error: result.error }, { status: 400 }));
           }
 
@@ -124,8 +127,10 @@ export async function POST(request: Request) {
             }
           }
 
+          console.log('[금융 일정 업데이트] 완료 (성공)');
           return resolve(NextResponse.json({ events }));
         } catch (e: any) {
+          console.error(`[금융 일정 업데이트] 파싱 에러: ${e.message}`);
           console.error('Error parsing python output:', dataString);
           return resolve(
             NextResponse.json(

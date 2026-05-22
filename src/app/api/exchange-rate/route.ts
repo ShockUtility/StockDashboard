@@ -3,6 +3,8 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 export async function GET() {
+  console.log('[환율 조회] 시작');
+
   return new Promise<NextResponse>((resolve) => {
     const pythonExecutable = process.env.NODE_ENV === 'production' 
       ? '/usr/bin/python' 
@@ -24,7 +26,7 @@ export async function GET() {
 
     pyProcess.on('close', (codeStatus) => {
       if (codeStatus !== 0) {
-        console.error(`Python script exited with code ${codeStatus}`);
+        console.error(`[환율 조회] 실패 (종료 코드: ${codeStatus})`);
         console.error(errorString);
         return resolve(NextResponse.json({ error: '환율 데이터를 가져오는 중 오류가 발생했습니다.' }, { status: 500 }));
       }
@@ -32,10 +34,13 @@ export async function GET() {
       try {
         const result = JSON.parse(dataString.trim());
         if (result.error) {
+          console.error(`[환율 조회] 내부 에러 응답: ${result.error}`);
           return resolve(NextResponse.json({ error: result.error }, { status: 400 }));
         }
+        console.log('[환율 조회] 완료 (성공)');
         return resolve(NextResponse.json(result));
-      } catch (e) {
+      } catch (e: any) {
+        console.error(`[환율 조회] 파싱 에러: ${e.message}`);
         console.error('Error parsing python output:', dataString);
         return resolve(NextResponse.json({ error: '환율 데이터 파싱 오류' }, { status: 500 }));
       }

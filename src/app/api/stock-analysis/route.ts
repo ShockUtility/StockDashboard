@@ -13,6 +13,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: '종목 코드가 필요합니다.' }, { status: 400 });
   }
 
+  console.log(`[주식 분석] 시작 (종목: ${code})`);
+
   // 파이썬 스크립트를 실행하고 결과를 받아오기 위해 Promise를 사용합니다.
   return new Promise<NextResponse>((resolve) => {
     // 운영 환경과 개발 환경에 따라 파이썬 실행 파일 경로를 설정합니다.
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
     pyProcess.on('close', (codeStatus) => {
       // 종료 코드가 0이 아니면 에러가 발생한 것입니다.
       if (codeStatus !== 0) {
-        console.error(`Python script exited with code ${codeStatus}`);
+        console.error(`[주식 분석] 실패 (종료 코드: ${codeStatus})`);
         console.error('Python Error:', errorString);
         return resolve(NextResponse.json({ error: '데이터를 가져오는 중 오류가 발생했습니다.' }, { status: 500 }));
       }
@@ -54,12 +56,15 @@ export async function GET(request: Request) {
         
         // 결과 내에 에러 메시지가 있다면 400 에러를 반환합니다.
         if (result.error) {
+          console.error(`[주식 분석] 내부 에러 응답: ${result.error}`);
           return resolve(NextResponse.json({ error: result.error }, { status: 400 }));
         }
         
+        console.log(`[주식 분석] 완료 (종목: ${code})`);
         // 성공적인 결과를 반환합니다.
         return resolve(NextResponse.json(result));
-      } catch (e) {
+      } catch (e: any) {
+        console.error(`[주식 분석] 파싱 에러: ${e.message}`);
         console.error('Error parsing python output:', dataString);
         return resolve(NextResponse.json({ error: '데이터 파싱 오류가 발생했습니다.' }, { status: 500 }));
       }
