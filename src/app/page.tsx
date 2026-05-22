@@ -8,7 +8,7 @@ import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useCalculations, getSortedAssets } from '../hooks/useCalculations';
 import { formatMoney, COLORS } from '../utils/format';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Menu, Landmark, DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { Menu, Landmark, DollarSign, TrendingUp, Calendar, Download, Upload, Trash2 } from 'lucide-react';
 
 // UI Components
 import { DashboardSummary } from '../components/DashboardSummary';
@@ -337,13 +337,16 @@ export default function Home() {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setShowSettingsMenu(false)} />
             <div className={`settings-dropdown ${showSettingsMenu ? 'show' : ''}`} style={{ zIndex: 1000 }}>
               <button className="settings-menu-item" onClick={() => { setShowSettingsMenu(false); handleExport(); }}>
-                ⬇️ 데이터 내보내기
+                <Download size={16} />
+                <span>데이터 내보내기</span>
               </button>
               <button className="settings-menu-item" onClick={() => { setShowSettingsMenu(false); if (confirm('기존 데이터가 덮어쓰기 됩니다.')) fileInputRef.current?.click(); }}>
-                ⬆️ 데이터 불러오기
+                <Upload size={16} />
+                <span>데이터 불러오기</span>
               </button>
               <button className="settings-menu-item danger" onClick={() => { setShowSettingsMenu(false); handleResetData(); }}>
-                🗑️ 초기화
+                <Trash2 size={16} />
+                <span>초기화</span>
               </button>
             </div>
           </>
