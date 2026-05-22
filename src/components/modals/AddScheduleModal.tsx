@@ -1,32 +1,39 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Trash2, Save } from 'lucide-react';
 import { CalendarEvent, ScheduleType } from '../../types/schedule';
+import { SCHEDULE_TYPE_CONFIG } from '../ScheduleSection';
 
 interface AddScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (event: Omit<CalendarEvent, 'id'>) => void;
+  onSubmit: (event: Omit<CalendarEvent, 'id' | 'isAI'>) => void;
   onDelete?: (id: string) => void;
   initialEvent: CalendarEvent | null; // 수정 모드일 때 기입되는 초기 일정 데이터
+  defaultDate?: string;               // [교육용 주석] 달력에서 클릭한 선택 날짜를 기본값으로 받아오기 위해 추가된 Prop입니다.
 }
 
 /**
  * [교육용 주석]
  * 주요일정을 수동으로 생성하거나 편집/삭제하는 글래스모피즘 디자인의 모달 컴포넌트입니다.
  * 종목 검색 API(/api/search-stock)를 활용하여 사용자가 입력하는 종목의 코드와 이름을 자동완성 검색해 줍니다.
+ * 기존의 html select tag를 리팩토링하여 Lucide React의 단색 벡터 아이콘과 테마 컬러가 온전히 맵핑되는
+ * 세련된 커스텀 드롭다운(Dropdown) 컴포넌트로 개편했습니다.
  */
 export function AddScheduleModal({
   isOpen,
   onClose,
   onSubmit,
   onDelete,
-  initialEvent
+  initialEvent,
+  defaultDate // [교육용 주석] 구조 분해 할당에 defaultDate를 추가하여 사용 가능하도록 로드합니다.
 }: AddScheduleModalProps) {
   // 1. 입력 폼의 상태 정의
   const [date, setDate] = useState('');
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<ScheduleType>('EARNINGS');
+  // [교육용 주석] 사용자가 수동으로 일정을 새로 추가할 때, 기본적으로 가장 많이 쓰는 '기타일정(OTHER)' 분류를 기본값으로 세팅합니다.
+  const [type, setType] = useState<ScheduleType>('OTHER');
   const [description, setDescription] = useState('');
 
   // 2. 주식 종목 연동 관련 상태 정의
@@ -38,7 +45,13 @@ export function AddScheduleModal({
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // 2-2. 커스텀 일정 분류 드롭다운 관련 상태
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
+
   // 3. 수정 모드(initialEvent가 있는 경우)와 등록 모드일 때 상태 초기화
+  // [교육용 주석] 
+  // 의존성 배열에 defaultDate를 추가하여, 달력에서 클릭한 날짜가 바뀔 때에도 모달 초기값이 정상 반영되도록 개선했습니다.
   useEffect(() => {
     if (isOpen) {
       if (initialEvent) {
@@ -59,11 +72,12 @@ export function AddScheduleModal({
           setSearchQuery('');
         }
       } else {
-        // 등록 모드 초기화 (날짜는 기본적으로 오늘 날짜 지정)
-        const today = new Date().toISOString().split('T')[0];
+        // 등록 모드 초기화 (전달받은 defaultDate가 있다면 해당 날짜로, 없으면 진짜 오늘 날짜로 세팅)
+        const today = defaultDate || new Date().toISOString().split('T')[0];
         setDate(today);
         setTitle('');
-        setType('EARNINGS');
+        // [교육용 주석] 신규 등록 시 일정 분류 기본값을 '기타일정(OTHER)'으로 초기화합니다.
+        setType('OTHER');
         setDescription('');
         setLinkStock(false);
         setSelectedStock(null);
@@ -71,8 +85,9 @@ export function AddScheduleModal({
       }
       setSearchResults([]);
       setShowDropdown(false);
+      setShowTypeDropdown(false);
     }
-  }, [isOpen, initialEvent]);
+  }, [isOpen, initialEvent, defaultDate]);
 
   // 4. 종목 자동완성 검색 API 호출 로직
   useEffect(() => {
@@ -103,6 +118,9 @@ export function AddScheduleModal({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target as Node)) {
+        setShowTypeDropdown(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -111,10 +129,19 @@ export function AddScheduleModal({
   if (!isOpen) return null;
 
   // 6. 폼 전송 이벤트 처리
+  // [교육용 주석]
+  // 사용자가 특정 주식 종목을 연동하겠다고 체크해두고, 실제로 검색 결과 드롭다운에서
+  // 종목을 클릭하여 선택하지 않은 채 저장을 시도할 경우, 연동 오류를 방지하기 위해 
+  // alert 경고를 노출하고 폼 전송을 차단하는 유효성 검증 단계를 추가했습니다.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !title) {
       alert('날짜와 제목을 입력해주세요.');
+      return;
+    }
+
+    if (linkStock && !selectedStock) {
+      alert('연동할 주식 종목을 검색 결과에서 선택해주세요. (목록의 종목명을 마우스로 클릭해야 올바르게 연동됩니다.)');
       return;
     }
 
@@ -136,10 +163,12 @@ export function AddScheduleModal({
     setShowDropdown(false);
 
     // [교육용 주석] 사용자가 종목을 선택하면, 제목을 자동으로 형식에 맞춰 채워 편의성을 높입니다.
+    // 새로 신설된 EX_DIVIDEND 타입에 대응하는 접미사(' 배당락일')도 사양에 추가했습니다.
     const suffixMap: Record<ScheduleType, string> = {
       EARNINGS: ' 실적 발표',
       IPO: ' 신규 상장(IPO)',
-      DIVIDEND: ' 배당락일/배당지급일',
+      DIVIDEND: ' 배당금 지급일',
+      EX_DIVIDEND: ' 배당락일',
       CONFERENCE: ' 컨퍼런스/학회',
       OTHER: ' 일정'
     };
@@ -172,21 +201,75 @@ export function AddScheduleModal({
             />
           </div>
 
-          {/* 일정 분류 선택 */}
-          <div className="input-group">
+          {/* 일정 분류 선택 (커스텀 글래스모피즘 드롭다운) */}
+          {/* [교육용 주석] 
+              브라우저의 투박한 select 태그 스타일에서 벗어나, lucide-react의 고화질 벡터 아이콘과
+              고정 테마 컬러가 유려하게 맵핑되는 프리미엄 디자인의 커스텀 드롭다운 컴포넌트입니다. */}
+          <div className="input-group" ref={typeDropdownRef} style={{ position: 'relative' }}>
             <label className="input-label">일정 분류</label>
-            <select
+            <div
+              onClick={() => setShowTypeDropdown(!showTypeDropdown)}
               className="glass-input"
-              value={type}
-              onChange={(e) => setType(e.target.value as ScheduleType)}
-              style={{ width: '100%', background: '#1e293b' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                padding: '10px 16px',
+                width: '100%',
+                minHeight: '42px',
+                background: '#1e293b',
+                borderRadius: '8px',
+                border: '1px solid var(--glass-border)'
+              }}
             >
-              <option value="EARNINGS">📉 실적 발표</option>
-              <option value="IPO">🚀 신규 상장 (IPO)</option>
-              <option value="DIVIDEND">💵 배당일</option>
-              <option value="CONFERENCE">🗣️ 학회 / 콘퍼런스</option>
-              <option value="OTHER">📌 기타 주요 일정</option>
-            </select>
+              {(() => {
+                const config = SCHEDULE_TYPE_CONFIG[type];
+                const SelectedIcon = config.icon;
+                return (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: config.color }}>
+                    <SelectedIcon size={16} strokeWidth={2.5} />
+                    <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{config.text}</span>
+                  </span>
+                );
+              })()}
+              <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>{showTypeDropdown ? '▲' : '▼'}</span>
+            </div>
+
+            {showTypeDropdown && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                background: '#0f172a', border: '1px solid var(--glass-border)',
+                borderRadius: '8px', zIndex: 110, maxHeight: '250px', overflowY: 'auto',
+                marginTop: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+              }}>
+                {Object.entries(SCHEDULE_TYPE_CONFIG).map(([key, config]) => {
+                  const ItemIcon = config.icon;
+                  const isSelected = type === key;
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => {
+                        setType(key as ScheduleType);
+                        setShowTypeDropdown(false);
+                      }}
+                      style={{
+                        padding: '10px 16px', cursor: 'pointer', fontSize: '0.9rem',
+                        borderBottom: '1px solid rgba(255,255,255,0.02)',
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        color: config.color,
+                        background: isSelected ? 'rgba(255,255,255,0.05)' : 'transparent'
+                      }}
+                      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                      onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <ItemIcon size={16} strokeWidth={2.5} />
+                      <span style={{ color: 'var(--text-primary)' }}>{config.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* 주식 종목 연동 체크박스 */}
@@ -311,22 +394,28 @@ export function AddScheduleModal({
                 type="button"
                 className="glass-button"
                 onClick={() => {
-                  if (confirm('이 일정을 삭제하시겠습니까?')) {
-                    onDelete(initialEvent.id);
-                    onClose();
-                  }
+                  onDelete(initialEvent.id);
+                  onClose();
                 }}
-                style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ff5555', border: '1px solid rgba(239, 68, 68, 0.4)', flex: 1 }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)', color: '#ff5555', border: '1px solid rgba(239, 68, 68, 0.4)', flex: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                }}
               >
-                🗑️ 삭제
+                <Trash2 size={14} />
+                삭제
               </button>
             )}
             <button
               type="submit"
               className="glass-button"
-              style={{ flex: 2 }}
+              style={{
+                flex: 2,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+              }}
             >
-              💾 저장하기
+              <Save size={14} />
+              저장하기
             </button>
           </div>
         </form>

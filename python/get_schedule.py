@@ -66,7 +66,7 @@ def parse_calendar_events(calendar, year, original_ticker):
                         {
                             "type": "EARNINGS",
                             "date": normalize_date(item),
-                            "description": "Earnings Date",
+                            "description": "",
                             "status": "ESTIMATED",
                             "stockCode": original_ticker
                         }
@@ -77,7 +77,7 @@ def parse_calendar_events(calendar, year, original_ticker):
                     {
                         "type": "DIVIDEND_DATE",
                         "date": normalize_date(value),
-                        "description": "Dividend Date",
+                        "description": "",
                         "status": "CONFIRMED",
                         "stockCode": original_ticker
                     }
@@ -88,7 +88,7 @@ def parse_calendar_events(calendar, year, original_ticker):
                     {
                         "type": "EX_DIVIDEND_DATE",
                         "date": normalize_date(value),
-                        "description": "Ex-Dividend Date",
+                        "description": "",
                         "status": "CONFIRMED",
                         "stockCode": original_ticker
                     }
@@ -116,7 +116,7 @@ def parse_action_events(actions, year, original_ticker):
                     "type": "DIVIDEND_PAYMENT",
                     "date": normalize_date(idx),
                     "amount": str(dividends),
-                    "description": "Dividend Payment",
+                    "description": "",
                     "stockCode": original_ticker
                 }
             )
@@ -127,7 +127,7 @@ def parse_action_events(actions, year, original_ticker):
                     "type": "STOCK_SPLIT",
                     "date": normalize_date(idx),
                     "ratio": str(splits),
-                    "description": "Stock Split",
+                    "description": "",
                     "stockCode": original_ticker
                 }
             )

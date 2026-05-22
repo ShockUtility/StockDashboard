@@ -1,5 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+## 출력 및 소통 규칙
+- **전체 코드 출력 금지**: 파일 수정 완료 후 채팅창에 파일 전체 내용을 절대로 다시 출력하지 마십시오.
+- **Diff 형식 사용**: 변경된 부분만 알아볼 수 있게 `+`(추가), `-`(삭제) 표시가 포함된 짧은 코드 조각(Diff)만 제공하십시오.
+- **요약 보고**: 수정 사항이 많을 때는 코드 대신 "수정된 파일 경로"와 "수정 목적 3줄 요약"만 출력하십시오.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+## 디자인 및 스타일 규칙 (Anti-Bootstrap)
+
 <!-- END:nextjs-agent-rules -->

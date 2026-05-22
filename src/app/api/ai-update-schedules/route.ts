@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
             for (const rawEvt of (schedule.events || [])) {
               let title = '';
-              let type: 'EARNINGS' | 'IPO' | 'DIVIDEND' | 'CONFERENCE' | 'OTHER' = 'OTHER';
+              let type: 'EARNINGS' | 'IPO' | 'DIVIDEND' | 'EX_DIVIDEND' | 'CONFERENCE' | 'OTHER' = 'OTHER';
 
               // 파이썬 이벤트 타입 분기에 따른 한글 제목 매핑 및 타입 분류
               if (rawEvt.type === 'EARNINGS') {
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
                 type = 'DIVIDEND';
                 title = `${ticker} 배당금 지급 예정일`;
               } else if (rawEvt.type === 'EX_DIVIDEND_DATE') {
-                type = 'DIVIDEND';
+                type = 'EX_DIVIDEND';
                 title = `${ticker} 배당락일`;
               } else if (rawEvt.type === 'DIVIDEND_PAYMENT') {
                 type = 'DIVIDEND';

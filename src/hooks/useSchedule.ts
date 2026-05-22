@@ -39,7 +39,7 @@ export function useSchedule() {
   }, [schedules, isMounted]);
 
   // 3. 신규 일정을 추가하는 함수입니다.
-  const addSchedule = (newEvent: Omit<CalendarEvent, 'id'>) => {
+  const addSchedule = (newEvent: Omit<CalendarEvent, 'id' | 'isAI'>) => {
     const item: CalendarEvent = {
       ...newEvent,
       isAI: false, // 사용자가 직접 등록한 수동 일정이므로 false를 명시합니다.
@@ -49,19 +49,24 @@ export function useSchedule() {
   };
 
   // 4. 기존 일정을 편집(수정)하는 함수입니다.
-  const editSchedule = (id: string, updatedEvent: Omit<CalendarEvent, 'id'>) => {
+  const editSchedule = (id: string, updatedEvent: Omit<CalendarEvent, 'id' | 'isAI'>) => {
     setSchedules((prev) =>
       prev.map((event) =>
         event.id === id 
-          ? { ...event, ...updatedEvent, isAI: false } // 사용자가 수정했으므로 수동 일정(isAI: false)으로 격상합니다.
+          ? { ...event, ...updatedEvent, isAI: event.isAI } // 편집하더라도 생성 시 정해진 isAI 속성을 그대로 유지합니다.
           : event
       )
     );
   };
 
-  // 5. 일정을 삭제하는 함수입니다.
+  // 5. 단일 일정을 삭제하는 함수입니다.
   const deleteSchedule = (id: string) => {
     setSchedules((prev) => prev.filter((event) => event.id !== id));
+  };
+
+  // 5-2. 특정 종목과 연동된 모든 일정을 일괄 삭제하는 함수입니다.
+  const deleteSchedulesByStock = (stockCode: string) => {
+    setSchedules((prev) => prev.filter((event) => event.stockCode !== stockCode));
   };
 
   // 6. Gemini AI로부터 받아온 일정 배열을 기존 일정과 병합하는 함수입니다.
@@ -115,6 +120,7 @@ export function useSchedule() {
     addSchedule,
     editSchedule,
     deleteSchedule,
+    deleteSchedulesByStock,
     mergeAISchedules
   };
 }
