@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+.tmp
 
 # debug
 npm-debug.log*
@@ -43,5 +44,6 @@ next-env.d.ts
 # cache
 /python/stock_names_cache.json
 /node-compile-cache/
+/playwright-report/
 
 
