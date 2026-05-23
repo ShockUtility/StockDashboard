@@ -103,7 +103,7 @@ def parse_calendar_events(calendar, year, original_ticker):
 
 def parse_action_events(actions, year, original_ticker):
     # [교육용 설명]
-    # yfinance actions 데이터에서 배당금 분배 및 주식 분할 이벤트를 파싱합니다.
+    # yfinance actions 데이터에서 주식 분할 이벤트를 파싱합니다.
     # 기존 STOCK_SPLIT을 SPLIT으로 간소화하고, 확정된 내역이므로 isConfirmed를 True로 설정합니다.
     events = []
     if actions is None or actions.empty:
@@ -114,20 +114,7 @@ def parse_action_events(actions, year, original_ticker):
         if event_year != year:
             continue
 
-        dividends = float(row.get("Dividends", 0) or 0)
         splits = float(row.get("Stock Splits", 0) or 0)
-
-        if dividends != 0:
-            events.append(
-                {
-                    "type": "DIVIDEND_PAYMENT",
-                    "date": normalize_date(idx),
-                    "amount": str(dividends),
-                    "description": "",
-                    "isConfirmed": True,  # 배당금 지급 완료 내역이므로 확정(True)
-                    "ticker": original_ticker
-                }
-            )
 
         if splits != 0:
             events.append(

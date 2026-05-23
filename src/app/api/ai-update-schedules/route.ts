@@ -103,12 +103,6 @@ export async function POST(request: Request) {
               } else if (rawEvt.type === 'EX_DIVIDEND') {
                 type = 'EX_DIVIDEND';
                 title = `${ticker} 배당락일`;
-              } else if (rawEvt.type === 'DIVIDEND_PAYMENT') {
-                type = 'DIVIDEND';
-                // 배당 금액이 소수로 반환되는 경우 소수점 둘째자리까지 정돈
-                const amountVal = parseFloat(rawEvt.amount);
-                const amountText = !isNaN(amountVal) ? ` (주당 $${amountVal.toFixed(2)})` : '';
-                title = `${ticker} 배당금 지급${amountText}`;
               } else if (rawEvt.type === 'SPLIT') {
                 type = 'OTHER';
                 const ratioText = rawEvt.ratio ? ` (${rawEvt.ratio})` : '';
