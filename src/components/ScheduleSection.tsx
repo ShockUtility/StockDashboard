@@ -23,7 +23,7 @@ export const SCHEDULE_TYPE_CONFIG = {
     borderColor: 'rgba(139, 92, 246, 0.25)'
   },
   DIVIDEND: {
-    text: '배당금', // 사용자의 피드백을 반영하여 '배당일'에서 '배당금'으로 명칭 통일
+    text: '배당', // 사용자의 피드백을 반영하여 '배당일'에서 '배당'으로 명칭 통일
     icon: DollarSign, // 요청에 따라 달러 기호 아이콘으로 변경
     color: '#fbbf24',
     bg: 'rgba(245, 158, 11, 0.12)',
@@ -411,7 +411,7 @@ export function ScheduleSection({
                       let displayName = '';
                       switch (event.type) {
                         case 'DIVIDEND':
-                          displayName = '배당금';
+                          displayName = '배당';
                           break;
                         case 'EX_DIVIDEND':
                           displayName = '배당락';
@@ -797,10 +797,10 @@ export function ScheduleSection({
           달력과 뒷배경 요소를 어둡게 딤(Dim) 아웃 처리하여 모달에 시선을 집중시켜주는 반응형 투명 오버레이입니다. 
           데스크톱 환경에서는 CSS에 의해 자동으로 나타나지 않습니다. */}
       {showMobileDetail && (
-        <div 
-          className="mobile-only modal-overlay" 
-          onClick={() => setShowMobileDetail(false)} 
-          style={{ zIndex: 1000, opacity: 1, display: 'flex' }} 
+        <div
+          className="mobile-only modal-overlay"
+          onClick={() => setShowMobileDetail(false)}
+          style={{ zIndex: 1000, opacity: 1, display: 'flex' }}
         />
       )}
 

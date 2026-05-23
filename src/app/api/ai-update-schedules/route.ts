@@ -102,10 +102,13 @@ export async function POST(request: Request) {
                 title = `${ticker} 배당금 지급 예정일`;
               } else if (rawEvt.type === 'EX_DIVIDEND') {
                 type = 'EX_DIVIDEND';
-                title = `${ticker} 배당락일`;
+                // [교육용 주석] 파이썬에서 넘어온 배당금 정보(예: "배당금: $0.26")를 괄호로 포장해 캘린더 타이틀에 즉각 시각화합니다.
+                const amountText = rawEvt.description ? ` (${rawEvt.description})` : '';
+                title = `${ticker} 배당락일${amountText}`;
               } else if (rawEvt.type === 'SPLIT') {
                 type = 'OTHER';
-                const ratioText = rawEvt.ratio ? ` (${rawEvt.ratio})` : '';
+                // [교육용 주석] 파이썬에서 넘어온 주식 분할 비율(예: "분할비율: 2.0")을 괄호로 묶어 타이틀에 반영합니다.
+                const ratioText = rawEvt.description ? ` (${rawEvt.description})` : '';
                 title = `${ticker} 주식 분할${ratioText}`;
               } else {
                 title = `${ticker} 금융 일정 (${rawEvt.description})`;
