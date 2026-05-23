@@ -59,13 +59,13 @@ export function AddScheduleModal({
         setTitle(initialEvent.title);
         setType(initialEvent.type);
         setDescription(initialEvent.description || '');
-        if (initialEvent.stockCode) {
+        if (initialEvent.ticker) {
           setLinkStock(true);
           setSelectedStock({
-            code: initialEvent.stockCode,
-            name: initialEvent.stockName || initialEvent.stockCode
+            code: initialEvent.ticker,
+            name: initialEvent.stockName || initialEvent.ticker
           });
-          setSearchQuery(initialEvent.stockName || initialEvent.stockCode);
+          setSearchQuery(initialEvent.stockName || initialEvent.ticker);
         } else {
           setLinkStock(false);
           setSelectedStock(null);
@@ -150,7 +150,7 @@ export function AddScheduleModal({
       title,
       type,
       description: description || undefined,
-      stockCode: linkStock && selectedStock ? selectedStock.code : undefined,
+      ticker: linkStock && selectedStock ? selectedStock.code : undefined,
       stockName: linkStock && selectedStock ? selectedStock.name : undefined
     });
     onClose();

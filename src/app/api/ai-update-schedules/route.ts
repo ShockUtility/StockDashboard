@@ -94,12 +94,13 @@ export async function POST(request: Request) {
               // 파이썬 이벤트 타입 분기에 따른 한글 제목 매핑 및 타입 분류
               if (rawEvt.type === 'EARNINGS') {
                 type = 'EARNINGS';
-                const isEstimated = rawEvt.status === 'ESTIMATED';
+                // 파이썬 구조체에서 status 대신 isConfirmed가 사용되므로, 확정되지 않은 경우(false)를 예상 일정으로 판별합니다.
+                const isEstimated = rawEvt.isConfirmed === false;
                 title = `${isEstimated ? '[예상] ' : ''}${ticker} 실적 발표일`;
-              } else if (rawEvt.type === 'DIVIDEND_DATE') {
+              } else if (rawEvt.type === 'DIVIDEND') {
                 type = 'DIVIDEND';
                 title = `${ticker} 배당금 지급 예정일`;
-              } else if (rawEvt.type === 'EX_DIVIDEND_DATE') {
+              } else if (rawEvt.type === 'EX_DIVIDEND') {
                 type = 'EX_DIVIDEND';
                 title = `${ticker} 배당락일`;
               } else if (rawEvt.type === 'DIVIDEND_PAYMENT') {
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
                 const amountVal = parseFloat(rawEvt.amount);
                 const amountText = !isNaN(amountVal) ? ` (주당 $${amountVal.toFixed(2)})` : '';
                 title = `${ticker} 배당금 지급${amountText}`;
-              } else if (rawEvt.type === 'STOCK_SPLIT') {
+              } else if (rawEvt.type === 'SPLIT') {
                 type = 'OTHER';
                 const ratioText = rawEvt.ratio ? ` (${rawEvt.ratio})` : '';
                 title = `${ticker} 주식 분할${ratioText}`;
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
                 date: rawEvt.date,
                 title: title,
                 type: type,
-                stockCode: ticker,
+                ticker: ticker,
                 description: rawEvt.description || '',
                 isAI: true // AI/자동으로 긁어온 데이터임을 표시
               });

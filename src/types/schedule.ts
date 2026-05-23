@@ -14,7 +14,7 @@ export interface CalendarEvent {
   date: string;           // 일정 날짜 (포맷: YYYY-MM-DD)
   title: string;          // 일정 명칭 (예: "삼성전자 Q1 실적 발표")
   type: ScheduleType;     // 일정 종류 (상기 선언한 5개 종류 중 하나)
-  stockCode?: string;     // 일정과 관련된 주식 종목 코드 (선택사항, 예: "005930")
+  ticker?: string;        // 일정과 관련된 주식 종목 티커 코드 (선택사항, 예: "005930")
   stockName?: string;     // 일정과 관련된 주식 종목 한글명 (선택사항, 예: "삼성전자")
   description?: string;   // 일정에 대한 상세 내용이나 참고사항 (선택사항)
   isAI: boolean;          // AI에 의해 자동 추가된 일정인지 여부 (필수사항)

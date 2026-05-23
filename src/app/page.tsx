@@ -40,7 +40,7 @@ export default function Home() {
 
   // [교육용 주석] 일정 관련 상태와 제어 함수들을 가져옵니다.
   const {
-    schedules, setSchedules, addSchedule, editSchedule, deleteSchedule, deleteSchedulesByStock, mergeAISchedules
+    schedules, setSchedules, addSchedule, editSchedule, deleteSchedule, deleteSchedulesByTicker, mergeAISchedules
   } = useSchedule();
 
   // 페이지가 브라우저에 처음 보여졌을 때(마운트될 때) 
@@ -582,7 +582,7 @@ export default function Home() {
           addSchedule={addSchedule}
           editSchedule={editSchedule}
           deleteSchedule={deleteSchedule}
-          deleteSchedulesByStock={deleteSchedulesByStock}
+          deleteSchedulesByTicker={deleteSchedulesByTicker}
           mergeAISchedules={mergeAISchedules}
         />
       )}

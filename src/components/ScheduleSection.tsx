@@ -70,7 +70,7 @@ interface ScheduleSectionProps {
   addSchedule: (event: Omit<CalendarEvent, 'id' | 'isAI'>) => void;
   editSchedule: (id: string, event: Omit<CalendarEvent, 'id' | 'isAI'>) => void;
   deleteSchedule: (id: string) => void;
-  deleteSchedulesByStock: (stockCode: string) => void;
+  deleteSchedulesByTicker: (ticker: string) => void;
   mergeAISchedules: (aiEvents: Omit<CalendarEvent, 'id'>[]) => void;
 }
 
@@ -86,7 +86,7 @@ export function ScheduleSection({
   addSchedule,
   editSchedule,
   deleteSchedule,
-  deleteSchedulesByStock,
+  deleteSchedulesByTicker,
   mergeAISchedules
 }: ScheduleSectionProps) {
   // 1. 현재 표시 중인 달력의 연도와 월 상태 관리 (월은 0부터 11까지)
@@ -182,16 +182,16 @@ export function ScheduleSection({
   // [교육용 주석] 일정 제목이 종목 티커로 시작하는 경우(예: "AAPL 배당금 지급"), 종목 한글 이름으로 치환하여 노출합니다.
   const getDisplayTitle = (event: CalendarEvent): string => {
     let displayTitle = removeEmojis(event.title);
-    if (event.stockCode) {
-      const upperCode = event.stockCode.toUpperCase();
+    if (event.ticker) {
+      const upperCode = event.ticker.toUpperCase();
       if (displayTitle.toUpperCase().startsWith(upperCode)) {
         let resolvedName = event.stockName;
-        if (!resolvedName || resolvedName === event.stockCode) {
-          resolvedName = getStockNameByCode(event.stockCode);
+        if (!resolvedName || resolvedName === event.ticker) {
+          resolvedName = getStockNameByCode(event.ticker);
         }
-        if (resolvedName && resolvedName !== event.stockCode) {
+        if (resolvedName && resolvedName !== event.ticker) {
           // 티커 부분만 실제 종목명으로 치환
-          displayTitle = resolvedName + displayTitle.substring(event.stockCode.length);
+          displayTitle = resolvedName + displayTitle.substring(event.ticker.length);
         }
       }
     }
@@ -237,15 +237,15 @@ export function ScheduleSection({
         // 또한 일정 제목이 티커로 시작하는 경우(예: "AAPL 배당금..."), 이를 한글명(예: "애플 배당금...")으로 미리 치환하여 저장합니다.
         const enrichedEvents = data.events.map((evt: any) => {
           const matchingStock = uniqueStocks.find(
-            (s) => s.code.toUpperCase() === evt.stockCode.toUpperCase()
+            (s) => s.code.toUpperCase() === evt.ticker.toUpperCase()
           );
-          const stockName = matchingStock ? matchingStock.name : evt.stockCode;
+          const stockName = matchingStock ? matchingStock.name : evt.ticker;
 
           let enrichedTitle = evt.title;
-          if (evt.stockCode && stockName && stockName !== evt.stockCode) {
-            const upperCode = evt.stockCode.toUpperCase();
+          if (evt.ticker && stockName && stockName !== evt.ticker) {
+            const upperCode = evt.ticker.toUpperCase();
             if (evt.title.toUpperCase().startsWith(upperCode)) {
-              enrichedTitle = stockName + evt.title.substring(evt.stockCode.length);
+              enrichedTitle = stockName + evt.title.substring(evt.ticker.length);
             }
           }
 
@@ -401,11 +401,11 @@ export function ScheduleSection({
                     {(() => {
                       // [교육용 주석] event.stockName이 티커 코드와 같거나 누락되었을 경우, 포트폴리오 내의 실제 이름을 찾아 매핑합니다.
                       let resolvedName = event.stockName;
-                      if (!resolvedName || resolvedName === event.stockCode) {
-                        resolvedName = getStockNameByCode(event.stockCode);
+                      if (!resolvedName || resolvedName === event.ticker) {
+                        resolvedName = getStockNameByCode(event.ticker);
                       }
 
-                      const hasValidName = resolvedName && resolvedName !== event.stockCode;
+                      const hasValidName = resolvedName && resolvedName !== event.ticker;
                       const prefix = hasValidName ? `[${resolvedName}] ` : '';
 
                       let displayName = '';
@@ -655,14 +655,14 @@ export function ScheduleSection({
                             {getDisplayTitle(event)}
                           </span>
                         </div>
-                        {event.stockCode && (
+                        {event.ticker && (
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                             {/* [교육용 주석] 
                                 종목 이름(stockName)이 존재하고 티커 코드(stockCode)와 다를 때만 '이름 (티커)'로 표시하고,
                                 이름이 누락되었거나 티커와 동일한 경우에는 티커 하나만 깔끔하게 표시하여 중복 표기를 방지합니다. */}
-                            🔗 연동 종목: {event.stockName && event.stockName !== event.stockCode
-                              ? `${event.stockName} (${event.stockCode})`
-                              : event.stockCode}
+                            🔗 연동 종목: {event.stockName && event.stockName !== event.ticker
+                              ? `${event.stockName} (${event.ticker})`
+                              : event.ticker}
                           </span>
                         )}
                       </div>
@@ -858,9 +858,9 @@ export function ScheduleSection({
                 </h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, padding: '0 8px', lineHeight: '1.5' }}>
                   <strong>"{getDisplayTitle(deletingEvent)}"</strong> 일정을 정말로 삭제하시겠습니까?
-                  {deletingEvent.stockCode && (
+                  {deletingEvent.ticker && (
                     <span style={{ display: 'block', marginTop: '8px', color: '#fbbf24', fontSize: '0.85rem' }}>
-                      ⚠️ 이 일정은 <strong>{deletingEvent.stockName || deletingEvent.stockCode}</strong> 종목과 연동되어 있습니다.
+                      ⚠️ 이 일정은 <strong>{deletingEvent.stockName || deletingEvent.ticker}</strong> 종목과 연동되어 있습니다.
                     </span>
                   )}
                 </p>
@@ -871,14 +871,14 @@ export function ScheduleSection({
                   연동된 종목 코드가 있을 때는 [좌: 전 종목 삭제, 우: 삭제] 형태로 보여주며,
                   연동된 종목 코드가 없을 때는 [삭제] 버튼 하나만 영역을 가득 채우도록 조건부 분기 처리했습니다. */}
               <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', width: '100%', marginTop: '12px' }}>
-                {deletingEvent.stockCode ? (
+                {deletingEvent.ticker ? (
                   <>
                     {/* 좌측 버튼: 전 종목 삭제 (오렌지-레드 그라데이션) */}
                     <button
                       className="glass-button"
                       onClick={() => {
-                        if (deletingEvent.stockCode) {
-                          deleteSchedulesByStock(deletingEvent.stockCode);
+                        if (deletingEvent.ticker) {
+                          deleteSchedulesByTicker(deletingEvent.ticker);
                         }
                         setDeletingEvent(null);
                       }}

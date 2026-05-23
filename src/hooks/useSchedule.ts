@@ -65,30 +65,30 @@ export function useSchedule() {
   };
 
   // 5-2. 특정 종목과 연동된 모든 일정을 일괄 삭제하는 함수입니다.
-  const deleteSchedulesByStock = (stockCode: string) => {
-    setSchedules((prev) => prev.filter((event) => event.stockCode !== stockCode));
+  const deleteSchedulesByTicker = (ticker: string) => {
+    setSchedules((prev) => prev.filter((event) => event.ticker !== ticker));
   };
 
   // 6. Gemini AI로부터 받아온 일정 배열을 기존 일정과 병합하는 함수입니다.
   // [교육용 주석]
-  // - 새로운 AI 일정이 들어오면, 업데이트 중인 각 종목코드(stockCode)의 수집 연도(Year)를 식별합니다.
+  // - 새로운 AI 일정이 들어오면, 업데이트 중인 각 티커 코드(ticker)의 수집 연도(Year)를 식별합니다.
   // - 해당 종목의 해당 연도에 대응하는 기존 AI 일정(isAI === true)만 선별적으로 제거합니다.
   // - 다른 종목의 일정이나 사용자가 등록한 수동 일정(isAI: false/undefined)은 절대 건드리지 않고 안전하게 보존합니다.
   const mergeAISchedules = (aiEvents: Omit<CalendarEvent, 'id'>[]) => {
     if (aiEvents.length === 0) return;
 
     // [교육용 주석]
-    // 새로 들어온 AI 일정들로부터 '종목코드_연도' 형태의 고유한 결합 키를 만들어 Set에 저장합니다.
+    // 새로 들어온 AI 일정들로부터 '티커_연도' 형태의 고유한 결합 키를 만들어 Set에 저장합니다.
     // 예: 삼성전자("005930")의 2026년도 일정이 들어왔다면 "005930_2026" 키가 생성됩니다.
     const stockYearKeysToClear = new Set(
-      aiEvents.map((e) => `${e.stockCode}_${e.date.split('-')[0]}`)
+      aiEvents.map((e) => `${e.ticker}_${e.date.split('-')[0]}`)
     );
 
     setSchedules((prev) => {
-      // 1. 기존 일정 중 'isAI가 true'이고, 종목코드와 연도 조합 키가 삭제 대상 목록(stockYearKeysToClear)에 포함된 일정만 걸러서 삭제합니다.
+      // 1. 기존 일정 중 'isAI가 true'이고, 티커 코드와 연도 조합 키가 삭제 대상 목록(stockYearKeysToClear)에 포함된 일정만 걸러서 삭제합니다.
       //    이로써 타겟 종목 외 다른 종목들의 동일 연도 일정은 그대로 남게 됩니다.
       const filteredPrev = prev.filter((event) => {
-        const key = `${event.stockCode}_${event.date.split('-')[0]}`;
+        const key = `${event.ticker}_${event.date.split('-')[0]}`;
         return !(event.isAI && stockYearKeysToClear.has(key));
       });
 
@@ -99,7 +99,7 @@ export function useSchedule() {
             (oldEvent) =>
               oldEvent.date === newEvent.date &&
               oldEvent.title.trim() === newEvent.title.trim() &&
-              oldEvent.stockCode === newEvent.stockCode
+              oldEvent.ticker === newEvent.ticker
           );
           return !isDuplicate;
         })
@@ -120,7 +120,7 @@ export function useSchedule() {
     addSchedule,
     editSchedule,
     deleteSchedule,
-    deleteSchedulesByStock,
+    deleteSchedulesByTicker,
     mergeAISchedules
   };
 }

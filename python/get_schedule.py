@@ -50,6 +50,10 @@ def normalize_date(value):
 
 
 def parse_calendar_events(calendar, year, original_ticker):
+    # [교육용 설명]
+    # yfinance calendar 데이터에서 실적 발표일, 배당일, 배당락일을 파싱합니다.
+    # 각 일정의 성격에 맞게 타입명을 직관적으로 변경하고,
+    # status(문자열) 대신 확정 여부를 명확히 나타내는 isConfirmed(Boolean) 필드를 사용합니다.
     events = []
     if not isinstance(calendar, dict):
         return events
@@ -67,30 +71,30 @@ def parse_calendar_events(calendar, year, original_ticker):
                             "type": "EARNINGS",
                             "date": normalize_date(item),
                             "description": "",
-                            "status": "ESTIMATED",
-                            "stockCode": original_ticker
+                            "isConfirmed": False,  # 실적 발표일은 예상이므로 False 처리
+                            "ticker": original_ticker
                         }
                     )
         elif key == "Dividend Date" and isinstance(value, (date, datetime)):
             if value.year == year:
                 events.append(
                     {
-                        "type": "DIVIDEND_DATE",
+                        "type": "DIVIDEND",  # DIVIDEND_DATE에서 DIVIDEND로 타입명 간소화
                         "date": normalize_date(value),
                         "description": "",
-                        "status": "CONFIRMED",
-                        "stockCode": original_ticker
+                        "isConfirmed": True,  # 배당 예정일은 확정이므로 True 처리
+                        "ticker": original_ticker
                     }
                 )
         elif key == "Ex-Dividend Date" and isinstance(value, (date, datetime)):
             if value.year == year:
                 events.append(
                     {
-                        "type": "EX_DIVIDEND_DATE",
+                        "type": "EX_DIVIDEND",  # EX_DIVIDEND_DATE에서 EX_DIVIDEND로 변경
                         "date": normalize_date(value),
                         "description": "",
-                        "status": "CONFIRMED",
-                        "stockCode": original_ticker
+                        "isConfirmed": True,  # 배당락일은 확정이므로 True 처리
+                        "ticker": original_ticker
                     }
                 )
 
@@ -98,6 +102,9 @@ def parse_calendar_events(calendar, year, original_ticker):
 
 
 def parse_action_events(actions, year, original_ticker):
+    # [교육용 설명]
+    # yfinance actions 데이터에서 배당금 분배 및 주식 분할 이벤트를 파싱합니다.
+    # 기존 STOCK_SPLIT을 SPLIT으로 간소화하고, 확정된 내역이므로 isConfirmed를 True로 설정합니다.
     events = []
     if actions is None or actions.empty:
         return events
@@ -117,18 +124,20 @@ def parse_action_events(actions, year, original_ticker):
                     "date": normalize_date(idx),
                     "amount": str(dividends),
                     "description": "",
-                    "stockCode": original_ticker
+                    "isConfirmed": True,  # 배당금 지급 완료 내역이므로 확정(True)
+                    "ticker": original_ticker
                 }
             )
 
         if splits != 0:
             events.append(
                 {
-                    "type": "STOCK_SPLIT",
+                    "type": "SPLIT",  # STOCK_SPLIT에서 SPLIT으로 변경
                     "date": normalize_date(idx),
                     "ratio": str(splits),
                     "description": "",
-                    "stockCode": original_ticker
+                    "isConfirmed": True,  # 주식 분할 완료 내역이므로 확정(True)
+                    "ticker": original_ticker
                 }
             )
 
