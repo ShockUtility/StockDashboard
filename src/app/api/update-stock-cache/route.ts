@@ -36,9 +36,16 @@ export async function GET() {
     if (needUpdate) {
       const updateScript = path.join(process.cwd(), 'python', 'update_stock_names.py');
       
+      // [교육용 주석 & 경로 버그 해결]
+      // 다른 API 파일들과 동일하게 운영서버(production)인 경우 '/usr/bin/python' 절대경로를 쓰고,
+      // 그 외 개발/테스트 환경에서는 'python3'를 사용하도록 삼항 연산자 분기를 정교하게 추가했습니다.
+      const pythonExecutable = process.env.NODE_ENV === 'production'
+        ? '/usr/bin/python'
+        : 'python3';
+
       // [중요] Node.js에서 외부 프로세스(파이썬)를 백그라운드로 실행하는 방법입니다.
       // spawn을 사용하고 detached: true를 주면 부모 프로세스(웹 서버)와 독립적으로 실행됩니다.
-      const child = spawn('python3', [updateScript], {
+      const child = spawn(pythonExecutable, [updateScript], {
         detached: true,
         stdio: 'ignore' // 입출력을 무시하여 백그라운드에서 조용히 실행되게 합니다.
       });
@@ -46,7 +53,9 @@ export async function GET() {
       // 부모 프로세스가 자식 프로세스의 종료를 기다리지 않도록 연결을 끊습니다.
       child.unref();
 
-      console.log('🚀 주식 종목 캐시 갱신 작업을 백그라운드에서 시작했습니다.');
+      // [요청 사항 반영] 백그라운드 캐싱 작업을 기동할 때 실제로 시스템에 날리는 터미널 명령어를 상세하게 로그로 기록합니다.
+      console.log(`🚀 [주식 캐시 갱신] 작업을 백그라운드에서 기동했습니다.`);
+      console.log(`💻 [실행 커맨드]: ${pythonExecutable} ${updateScript}`);
       
       return NextResponse.json({ 
         status: 'updating', 
@@ -58,7 +67,7 @@ export async function GET() {
     return NextResponse.json({ 
       status: 'ok', 
       message: '캐시가 이미 최신 상태입니다.' 
-    });
+     });
 
   } catch (error) {
     console.error('캐시 갱신 API 오류:', error);
