@@ -38,22 +38,41 @@ export async function GET() {
       
       // [교육용 주석 & 경로 버그 해결]
       // 다른 API 파일들과 동일하게 운영서버(production)인 경우 '/usr/bin/python' 절대경로를 쓰고,
-      // 그 외 개발/테스트 환경에서는 'python3'를 사용하도록 삼항 연산자 분기를 정교하게 추가했습니다.
+      // 그 외 개발/테스트 환경에서는 'python3'를 사용하도록 삼항 연산자 분기를 적용했습니다.
       const pythonExecutable = process.env.NODE_ENV === 'production'
         ? '/usr/bin/python'
         : 'python3';
 
+      // [디버깅 요청 반영]
+      // 파이썬 실행 중 발생하는 모든 콘솔 출력(print)과 에러 추적 로그(Traceback)를
+      // 파일로 안전하게 떨구어 추적할 수 있도록 파일 쓰기 스트림(WriteStream)을 생성합니다.
+      const logFilePath = path.join(process.cwd(), 'python', 'update_stock.log');
+      const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
       // [중요] Node.js에서 외부 프로세스(파이썬)를 백그라운드로 실행하는 방법입니다.
       // spawn을 사용하고 detached: true를 주면 부모 프로세스(웹 서버)와 독립적으로 실행됩니다.
+      // stdio 옵션에 logStream을 연결하여 파이썬의 표준출력/에러출력을 파일로 우회 전송합니다.
       const child = spawn(pythonExecutable, [updateScript], {
         detached: true,
-        stdio: 'ignore' // 입출력을 무시하여 백그라운드에서 조용히 실행되게 합니다.
+        stdio: ['ignore', logStream, logStream] 
+      });
+
+      // [디버깅 요청 반영]
+      // 파이썬 프로세스 자체가 구동 실패(예: 경로 없음, 실행 권한 없음 등)했을 때의
+      // 에러 이벤트를 정교하게 가로채서 파일과 서버 콘솔 양쪽에 기록을 남겨 원인을 규명합니다.
+      child.on('error', (err) => {
+        console.error('❌ [주식 캐시 갱신] 프로세스 기동 에러 발생:', err);
+        logStream.write(`[${new Date().toLocaleString()}] ❌ 프로세스 기동 실패 에러: ${err.message}\n`);
       });
 
       // 부모 프로세스가 자식 프로세스의 종료를 기다리지 않도록 연결을 끊습니다.
       child.unref();
 
-      // [요청 사항 반영] 백그라운드 캐싱 작업을 기동할 때 실제로 시스템에 날리는 터미널 명령어를 상세하게 로그로 기록합니다.
+      // 시작 시점에 로그 파일에 랜드마크 로그를 기재합니다.
+      logStream.write(`[${new Date().toLocaleString()}] 🚀 주식 종목 캐시 갱신 작업을 백그라운드에서 시작했습니다.\n`);
+      logStream.write(`💻 [실행 커맨드]: ${pythonExecutable} ${updateScript}\n`);
+
+      // 서버 터미널 콘솔에도 기동 성공 사실과 커맨드를 표출해 줍니다.
       console.log(`🚀 [주식 캐시 갱신] 작업을 백그라운드에서 기동했습니다.`);
       console.log(`💻 [실행 커맨드]: ${pythonExecutable} ${updateScript}`);
       
