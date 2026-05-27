@@ -224,6 +224,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto; /* [교육용 주석] 모달 내용물이 뷰포트보다 커질 때 바깥 오버레이 차원에서 스크롤을 타게 해 줍니다. */
   z-index: 2000; /* [교육용 주석] 기존의 1000에서 2000으로 격상하여, 모바일 상세 정보 팝업(z-index: 1001)보다 항상 최상단에 렌더링되게 버그를 원천 차단합니다. */
   opacity: 0;
   animation: fadeIn 0.2s forwards;
@@ -613,15 +614,23 @@ h3 {
     transform: translate(-50%, -50%) scale(1) !important;
   }
 
-  /* [교육용 주석] 
-     모바일 기기에서는 화면 세로 높이(Height)가 작기 때문에, 입력 항목이 많아지면 모달이 위아래로 잘려 하단의 저장 버튼을 누를 수 없는 현상이 발생합니다.
-     이를 완벽하게 해결하기 위해 모달 내용물(.modal-content)의 위아래 내부 패딩을 32px에서 18px로 줄이고, 
-     최대 세로 높이를 화면의 85%로 제한(max-height: 85vh)한 뒤, 넘치는 부분은 내부 세로 스크롤(overflow-y: auto)이 생기도록 처리했습니다. */
+  /* [교육용 주석 - UX/UI 버그 수정]
+     모바일 기기에서는 화면 세로 높이가 매우 작으므로 모달이 화면 위아래로 잘리는 현상이 생깁니다.
+     기존에는 이를 해결하기 위해 .modal-content 자체에 'overflow-y: auto'를 줬으나, 
+     이로 인해 absolute 위치로 튀어나와야 하는 주식 종목 검색 자동완성 드롭다운이 잘려 안 보이는 치명적인 문제가 발생했습니다.
+     이를 근본적으로 해결하기 위해 .modal-content의 overflow는 'visible'로 열어두어 드롭다운이 뚫고 나올 수 있게 하고,
+     모달 오버레이(.modal-overlay)를 상단 정렬 및 스크롤되도록 재배치하여 공간 제약을 우아하게 극복했습니다. */
+  .modal-overlay {
+    align-items: flex-start !important;
+    padding: 40px 10px !important;
+    overflow-y: auto !important;
+  }
+
   .modal-content {
     padding: 18px 20px !important;
     border-radius: 16px !important;
-    max-height: 85vh !important;
-    overflow-y: auto !important;
+    max-height: none !important; /* 오버레이 스크롤이 담당하므로 높이 제한을 해제합니다. */
+    overflow: visible !important; /* [핵심 CSS 버그 수정] 검색 드롭다운이 모달 바깥으로 온전히 보이도록 visible로 설정 */
     display: flex;
     flex-direction: column;
   }
