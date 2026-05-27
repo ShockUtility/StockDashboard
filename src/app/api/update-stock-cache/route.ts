@@ -43,18 +43,19 @@ export async function GET() {
         ? '/usr/bin/python'
         : 'python3';
 
-      // [디버깅 요청 반영]
-      // 파이썬 실행 중 발생하는 모든 콘솔 출력(print)과 에러 추적 로그(Traceback)를
-      // 파일로 안전하게 떨구어 추적할 수 있도록 파일 쓰기 스트림(WriteStream)을 생성합니다.
+      // [교육용 주석 & 주요 런타임 에러 해결]
+      // 기존에 'fs.createWriteStream' 객체를 직접 spawn stdio에 전달하면,
+      // Node.js 엔진이나 Next.js 런타임에 따라 파일 디스크립터(fd)가 아직 null인 상태(비동기 지연)로 프로세스가 기동되어
+      // 'ERR_INVALID_ARG_VALUE (The argument stdio is invalid)' 에러를 뿜으며 자식이 강사하는 버그가 있었습니다.
+      // 이를 근본적으로 해결하기 위해 'fs.openSync'를 사용해 동기적으로 완벽하게 파일 디스크립터 정수값을 획득하여 전달합니다.
       const logFilePath = path.join(process.cwd(), 'python', 'update_stock.log');
-      const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+      const fd = fs.openSync(logFilePath, 'a'); // 추가(append) 모드로 동기적 디스크립터 오픈
 
       // [중요] Node.js에서 외부 프로세스(파이썬)를 백그라운드로 실행하는 방법입니다.
-      // spawn을 사용하고 detached: true를 주면 부모 프로세스(웹 서버)와 독립적으로 실행됩니다.
-      // stdio 옵션에 logStream을 연결하여 파이썬의 표준출력/에러출력을 파일로 우회 전송합니다.
+      // stdio 옵션에 파일 디스크립터(정수)를 바로 꽂아주어 OS 레벨에서 완벽하게 스트림을 파일로 리다이렉트합니다.
       const child = spawn(pythonExecutable, [updateScript], {
         detached: true,
-        stdio: ['ignore', logStream, logStream] 
+        stdio: ['ignore', fd, fd] 
       });
 
       // [디버깅 요청 반영]
@@ -62,15 +63,15 @@ export async function GET() {
       // 에러 이벤트를 정교하게 가로채서 파일과 서버 콘솔 양쪽에 기록을 남겨 원인을 규명합니다.
       child.on('error', (err) => {
         console.error('❌ [주식 캐시 갱신] 프로세스 기동 에러 발생:', err);
-        logStream.write(`[${new Date().toLocaleString()}] ❌ 프로세스 기동 실패 에러: ${err.message}\n`);
+        fs.appendFileSync(logFilePath, `[${new Date().toLocaleString()}] ❌ 프로세스 기동 실패 에러: ${err.message}\n`);
       });
 
       // 부모 프로세스가 자식 프로세스의 종료를 기다리지 않도록 연결을 끊습니다.
       child.unref();
 
-      // 시작 시점에 로그 파일에 랜드마크 로그를 기재합니다.
-      logStream.write(`[${new Date().toLocaleString()}] 🚀 주식 종목 캐시 갱신 작업을 백그라운드에서 시작했습니다.\n`);
-      logStream.write(`💻 [실행 커맨드]: ${pythonExecutable} ${updateScript}\n`);
+      // 시작 시점에 로그 파일에 랜드마크 로그를 동기적으로 안전하게 기재합니다.
+      fs.appendFileSync(logFilePath, `[${new Date().toLocaleString()}] 🚀 주식 종목 캐시 갱신 작업을 백그라운드에서 시작했습니다.\n`);
+      fs.appendFileSync(logFilePath, `💻 [실행 커맨드]: ${pythonExecutable} ${updateScript}\n`);
 
       // 서버 터미널 콘솔에도 기동 성공 사실과 커맨드를 표출해 줍니다.
       console.log(`🚀 [주식 캐시 갱신] 작업을 백그라운드에서 기동했습니다.`);
