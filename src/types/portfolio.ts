@@ -31,6 +31,8 @@ export interface PieModalProps {
   title: string;
   data: { name: string; value: number }[];
   formatMoney: (val: number, cur: string) => string;
+  // [교육용 주석] 차트 팝업에 표시할 자산의 기준 통화 단위(예: 'KRW', 'USD')를 지정합니다.
+  currency?: 'KRW' | 'USD';
 }
 
 export interface ExchangeRateModalProps {

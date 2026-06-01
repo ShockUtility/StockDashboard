@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { PieModalProps } from '../../types/portfolio';
 import { COLORS } from '../../utils/format';
 
-export const PieModal = ({ isOpen, onClose, title, data, formatMoney }: PieModalProps) => {
+export const PieModal = ({ isOpen, onClose, title, data, formatMoney, currency = 'KRW' }: PieModalProps) => {
   if (!isOpen) return null;
 
   const sortedData = [...data].sort((a, b) => b.value - a.value);
@@ -22,7 +22,8 @@ export const PieModal = ({ isOpen, onClose, title, data, formatMoney }: PieModal
               <Pie data={sortedData} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value" stroke="none">
                 {sortedData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(value: any) => formatMoney(Number(value), 'KRW')} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+              {/* [교육용 주석] 툴팁 표시 시, 하드코딩되었던 'KRW' 단위를 제거하고 부모로부터 전달된 currency(USD 또는 KRW) 변수를 사용하여 화폐 기호를 알맞게 표시합니다. */}
+              <Tooltip formatter={(value: any) => formatMoney(Number(value), currency)} contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -36,7 +37,8 @@ export const PieModal = ({ isOpen, onClose, title, data, formatMoney }: PieModal
                     <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: COLORS[index % COLORS.length], display: 'inline-block', flexShrink: 0 }}></span>
                     <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }} title={entry.name}>{entry.name}</span>
                   </div>
-                  <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{percent.toFixed(1)}% ({formatMoney(entry.value, 'KRW')})</strong>
+                  {/* [교육용 주석] 하단 리스트 영역에도 'KRW' 대신 dynamic한 currency를 포맷 함수에 대입해 미국 주식은 달러($), 한국 주식은 원화(₩)로 나타나게 합니다. */}
+                  <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{percent.toFixed(1)}% ({formatMoney(entry.value, currency)})</strong>
                 </li>
               );
             })}

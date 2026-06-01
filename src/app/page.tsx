@@ -82,6 +82,8 @@ export default function Home() {
   const [showPieModal, setShowPieModal] = useState(false);
   const [pieModalTitle, setPieModalTitle] = useState("");
   const [pieModalData, setPieModalData] = useState<{ name: string, value: number }[]>([]);
+  // [교육용 주석] 현재 파이 차트 팝업에서 사용 중인 통화 단위(KRW 또는 USD)를 담아두기 위한 상태입니다.
+  const [pieModalCurrency, setPieModalCurrency] = useState<'KRW' | 'USD'>('KRW');
 
   const [showManageModal, setShowManageModal] = useState(false);
   const [showMoveSub, setShowMoveSub] = useState(false);
@@ -377,7 +379,8 @@ export default function Home() {
 
         <section className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
           <h2 style={{ fontSize: '1.5rem' }}>📊 자산 비중</h2>
-          <div className="pie-chart-container" style={{ width: '100%', height: '240px', marginBottom: '16px', cursor: 'pointer' }} onClick={() => { setPieModalTitle('전체 자산 비중'); setPieModalData(totals.totalPieData); setShowPieModal(true); }}>
+          {/* [교육용 주석] 전체 자산 비중을 띄울 때는 합산된 원화 금액 기준이므로 pieModalCurrency를 'KRW'로 초기화합니다. */}
+          <div className="pie-chart-container" style={{ width: '100%', height: '240px', marginBottom: '16px', cursor: 'pointer' }} onClick={() => { setPieModalTitle('전체 자산 비중'); setPieModalData(totals.totalPieData); setPieModalCurrency('KRW'); setShowPieModal(true); }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={totals.totalPieData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value" stroke="none">
@@ -523,7 +526,9 @@ export default function Home() {
               handleDeletePortfolio={handleDeletePortfolio}
               onShowPieChart={(p) => {
                 setPieModalTitle(`${p.name} 비중 현황`);
+                // [교육용 주석] 개별 포트폴리오 비중을 그릴 때는 달러 금액도 환율을 곱하여 원화(KRW)로 변환해 사용하므로 'KRW'로 세팅합니다.
                 setPieModalData(p.assets.filter(a => a.currentPrice * a.quantity > 0).map(a => ({ name: a.name, value: (a.currentPrice * a.quantity) * (a.currency === 'USD' ? exchangeRate : 1) })));
+                setPieModalCurrency('KRW');
                 setCurrentPortfolioId(p.id);
                 setShowPieModal(true);
               }}
@@ -562,7 +567,8 @@ export default function Home() {
         <AssetStatusSection
           portfolios={portfolios}
           exchangeRate={exchangeRate}
-          onShowPieChart={(title, data) => { setPieModalTitle(title); setPieModalData(data); setShowPieModal(true); }}
+          // [교육용 주석] 자산현황 탭에서 호출하는 onShowPieChart는 이제 세 번째 인자로 통화 기호(currency)를 건네주므로 이를 감지하여 적용합니다.
+          onShowPieChart={(title, data, currency) => { setPieModalTitle(title); setPieModalData(data); setPieModalCurrency(currency || 'KRW'); setShowPieModal(true); }}
           onShowDetail={(asset) => { setSelectedAsset(asset); setShowDetailModal(true); }}
         />
       )}
@@ -610,7 +616,8 @@ export default function Home() {
       )}
 
       {/* Modals */}
-      <PieModal isOpen={showPieModal} onClose={() => setShowPieModal(false)} title={pieModalTitle} data={pieModalData} formatMoney={formatMoney} />
+      {/* [교육용 주석] 최종 렌더링 시 팝업 컴포넌트에 감지된 통화(pieModalCurrency) 속성을 prop으로 함께 주입합니다. */}
+      <PieModal isOpen={showPieModal} onClose={() => setShowPieModal(false)} title={pieModalTitle} data={pieModalData} formatMoney={formatMoney} currency={pieModalCurrency} />
       <ExchangeRateModal isOpen={showExchangeModal} onClose={() => setShowExchangeModal(false)} exchangeHistory={exchangeHistory} exchangeRate={exchangeRate} />
       <AddStockModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} type={addModalType} setType={setAddModalType} code={code} setCode={setCode} actualCode={actualCode} setActualCode={setActualCode} avgPrice={avgPrice} setAvgPrice={setAvgPrice} quantity={quantity} setQuantity={setQuantity} loading={loading} errorMsg={errorMsg} setErrorMsg={setErrorMsg} currency={currency} setCurrency={setCurrency} onSubmit={handleAddStock} />
       <StockDetailModal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} asset={selectedAsset} formatMoney={formatMoney} />

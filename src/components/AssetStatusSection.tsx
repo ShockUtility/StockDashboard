@@ -6,7 +6,8 @@ import { getSortedAssets } from '../hooks/useCalculations';
 interface AssetStatusSectionProps {
   portfolios: Portfolio[];
   exchangeRate: number;
-  onShowPieChart: (title: string, data: { name: string; value: number }[]) => void;
+  // [교육용 주석] 차트 팝업에 표시할 데이터와 타이틀 및 어떤 통화 단위(USD, KRW)를 적용할지 전달받을 수 있도록 currency 인수를 추가로 정의합니다.
+  onShowPieChart: (title: string, data: { name: string; value: number }[], currency?: 'KRW' | 'USD') => void;
   onShowDetail: (asset: Asset) => void;
 }
 
@@ -105,7 +106,8 @@ export const AssetStatusSection = ({
                 onClick={(e) => {
                   e.stopPropagation(); // 접기 클릭 전파 방지
                   const usPieData = aggregatedUSStocks.map(s => ({ name: s.name, value: s.currentPrice * s.quantity }));
-                  onShowPieChart('🇺🇸 미국 주식 비중 현황', usPieData);
+                  // [교육용 주석] 미국 주식은 달러가 기준 통화이므로 'USD' 인자를 세 번째 파라미터로 추가 전달합니다.
+                  onShowPieChart('🇺🇸 미국 주식 비중 현황', usPieData, 'USD');
                 }}
                 title="미국 주식 비중 차트 보기"
               >
@@ -219,7 +221,8 @@ export const AssetStatusSection = ({
                 onClick={(e) => {
                   e.stopPropagation(); // 접기 클릭 전파 방지
                   const krPieData = aggregatedKRStocks.map(s => ({ name: s.name, value: s.currentPrice * s.quantity }));
-                  onShowPieChart('🇰🇷 한국 주식 비중 현황', krPieData);
+                  // [교육용 주석] 한국 주식은 원화가 기준 통화이므로 'KRW' 인자를 세 번째 파라미터로 추가 전달합니다.
+                  onShowPieChart('🇰🇷 한국 주식 비중 현황', krPieData, 'KRW');
                 }}
                 title="한국 주식 비중 차트 보기"
               >
